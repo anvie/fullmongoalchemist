@@ -1,0 +1,130 @@
+
+from pymongo.objectid import ObjectId
+from exc import RelationError
+from utils import parse_query
+
+class ConditionQuery(object):
+    
+    def __init__(self,**conds):
+        self._cond = conds
+
+    @property
+    def raw(self):
+        return self._cond
+
+    @property
+    def where_value(self):
+        return None
+    
+
+    def where(self,**params):
+
+        rv = self.apply(**params)
+
+        return rv and { '$where': rv } or None
+
+    def apply(self,**patch):
+
+        rv = self.where_value
+        
+        for k, v in patch.iteritems():
+            
+            if v is not None:
+                if type(rv) == str:
+                    
+                    rv = rv.replace( k, type(v) in [int,long] and str(v) or type(v) == ObjectId and str(repr(v.binary.encode('hex'))) or str(repr( type(v)==unicode and str(v) or v)))
+                    
+                elif type(rv) == dict:
+                    
+                    def find_replace( dict_data, key, replacement ):
+                        # recursively value replacement
+                        for k, v in dict_data.iteritems():
+                            if type(v) == dict:
+                                find_replace( v, key, replacement )
+                            elif type(v) == str:
+                                if v == ':%s' % key:
+                                    dict_data[k] = replacement
+                                    
+                    find_replace( rv, k, v )
+            else:
+                return None
+            
+            
+
+        return rv
+            
+
+    def __repr__(self):
+        return '<%s>' % self.__class__.__name__
+    
+    
+class or_(ConditionQuery):
+
+    @property
+    def where_value(self):
+
+        return ' || '.join( map(lambda x: 'this.%s == %s' % x, self._cond.items()) )
+
+    def __repr__(self):
+        return '<or_ ConditionQuery [%s]>' % self.where_value
+
+
+class and_(ConditionQuery):
+
+    @property
+    def where_value(self):
+        
+        rv = self._cond.items()
+        
+        return rv and ' && '.join( map(lambda x: 'this.%s == %s' % x, rv) ) or None
+
+    def __repr__(self):
+        return '<and_ ConditionQuery [%s]>' % self.where_value
+    
+    
+class rawcond(ConditionQuery):
+    
+    
+    @property
+    def where_value(self):
+        
+        return parse_query( self._cond )
+        
+
+    def __repr__(self):
+        return '<or_ ConditionQuery [%s]>' % self.where_value
+    
+    
+def dictarg(data):
+    return dict(map(lambda x: (str(x[0]), x[1]), data.items()))
+
+
+if __name__ == '__main__':
+    
+    
+    import unittest
+    
+    class test(unittest.TestCase):
+        
+        def test_rawcond(self):
+            
+            cond = rawcond(name__in=':namatamu')
+            tamu = ['cat','bird','wind']
+            
+            self.assertEqual( cond.where(namatamu=tamu), {'$where': {'name': {'$in': ['cat', 'bird', 'wind']}}} )
+            
+            
+        def test_where_stringcond(self):
+            
+            cond = or_(name=':name',age=':age')
+            
+            self.assertEqual( cond.where(name='anvie',age=15), {'$where': "this.age == 15 || this.name == 'anvie'"} )
+            
+    
+    suite = unittest.TestLoader().loadTestsFromTestCase(test)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+
+    
+    
+    
+
