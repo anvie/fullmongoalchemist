@@ -178,9 +178,13 @@ class SuperDoc(Doc):
         
         if hasattr( self.__class__, '_x_%s' % k ):
             typedata = getattr( self.__class__, '_x_%s' % k )
-            v = type(v)==str and unicode(v) or v
+            #v = type(v)==str and unicode(v) or v
             if typedata != type(v) and type(v) is not types.NoneType:
-                raise SuperDocError, "mismatch data type `%s`=%s and `%s`=%s" % (k,typedata,v,type(v))
+                # try to convert it if possible
+                try:
+                    v = typedata(v)
+                except:
+                    raise SuperDocError, "mismatch data type `%s`=%s and `%s`=%s" % (k,typedata,v,type(v))
             
         Doc.__setattr__(self, k , v)
 
