@@ -212,7 +212,13 @@ class SuperDoc(Doc):
                 except:
                     raise SuperDocError, "mismatch data type `%s`=%s and `%s`=%s" % (k,typedata,v,type(v))
             
-        Doc.__setattr__(self, k , v)
+        # check if one-to-one relation
+        # just map it to pk==fk
+        if hasattr(self.__class__,k) and type( getattr(self.__class__,k) ) == relation and isinstance(v,SuperDoc):
+            r = getattr(self.__class__, k)
+            setattr( self.__dict__['_data'], r._pk[1], getattr( v, r._pk[0] ) )
+        else:
+            Doc.__setattr__(self, k , v)
 
 
     def __delitem__(self, k):

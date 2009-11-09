@@ -233,7 +233,7 @@ class relation(object):
                 # build relation metadata
                 #
                 
-                if self._type in ('one-to-one','one-to-many'):
+                if self._type == 'one-to-many':
                     
                     if not data._changed():
                         continue
@@ -316,6 +316,7 @@ class relation(object):
             del self.__dict__['_new_data'][:]
             
         else:
+            # one-to-one
             if self.__dict__['_data']:
                 self.__dict__['_data'].save()
         

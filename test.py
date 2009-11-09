@@ -440,6 +440,14 @@ if __name__ == '__main__':
             user.wallposts.append(WallPost(message='test',writter=user))
             user.save()
             
+            post = WallPost(monga._db,message='post-smart-obj')
+            post.writter = user
+            post.save()
+            
+            post = monga.col(WallPost).find_one(message='post-smart-obj')
+            
+            self.assertEqual( post.writter.name, 'tester-smart-obj')
+            
             self.assertEqual( user.wallposts[0].writter.name, 'tester-smart-obj' )
             
             user.delete()
