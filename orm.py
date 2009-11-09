@@ -244,7 +244,7 @@ class relation(object):
                     if hasattr( self._parent_class.__dict__['_data'], self._pk[1] ):
                         
                         new_attr = getattr(self._parent_class.__dict__['_data'], self._pk[1])
-                        new_attr = type(new_attr) in [int,long] and new_attr or type(new_attr) == ObjectId and new_attr.binary.encode('hex') or str(repr(new_attr))
+                        new_attr = type(new_attr) in [int,long] and new_attr or type(new_attr) == ObjectId and new_attr.binary.encode('hex') or new_attr is not None and str(repr(new_attr)) or new_attr
                 
                         data.__setattr__(
                             self._pk[0],
@@ -253,7 +253,7 @@ class relation(object):
                     else:
                         raise RelationError, "Cannot build relation metadata invalid pk"
                     
-                    rels = filter( lambda x: type( getattr(data, x) ) == relation, dir(data.__class__) )
+                    rels = filter( lambda x: type( getattr(data.__class__, x) ) == relation, dir(data.__class__) )
                     
                     #global mapped_user_class_docs
                     
@@ -262,7 +262,7 @@ class relation(object):
                         if not hasattr(data.__dict__['_data'], rel):
                             continue
                         
-                        r = getattr(data, rel)
+                        r = getattr(data.__class__, rel)
                         rawd = getattr(data.__dict__['_data'], rel)
                         
                         if rawd is None:
@@ -271,7 +271,10 @@ class relation(object):
                         if type( rawd ) == RelationDataType:
                             continue
                         
-                        setattr( data.__dict__['_data'], r._pk[1], getattr( rawd , r._pk[0] ) )
+                        v = getattr( rawd , r._pk[0] )
+                        v = type(v) == ObjectId and v.binary.encode('hex') or v
+                        
+                        setattr( data.__dict__['_data'], r._pk[1], v )
                         
                         # delete it after used
                         delattr( data.__dict__['_data'], rel )

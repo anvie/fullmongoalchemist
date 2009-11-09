@@ -25,6 +25,9 @@ class SuperDoc(Doc):
                         raise SuperDocError, "`%s` is strict model. Cannot assign entryname for `%s`" % ( self.__class__.__name__,k )
             
         
+        for k, v in datas.iteritems():
+            self.__setattr__( k, v )
+            
         Doc.__init__(self, datas)
         
         self.__sanitize()
@@ -167,9 +170,18 @@ class SuperDoc(Doc):
         
         
     def __setattr__(self, k, v):
+        
+        
         if self.__dict__.has_key('_opt') and self.__dict__['_opt'].get('strict') == True:
             if self.__has_entryname( k ) == False:
                 raise SuperDocError, "`%s` is strict model. Cannot assign entryname for `%s`" % ( self.__class__.__name__,k )
+        
+        if hasattr( self.__class__, '_x_%s' % k ):
+            typedata = getattr( self.__class__, '_x_%s' % k )
+            v = type(v)==str and unicode(v) or v
+            if typedata != type(v) and type(v) is not types.NoneType:
+                raise SuperDocError, "mismatch data type `%s`=%s and `%s`=%s" % (k,typedata,v,type(v))
+            
         Doc.__setattr__(self, k , v)
 
 

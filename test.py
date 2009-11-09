@@ -90,6 +90,8 @@ class PostMany(SuperDoc):
     tag_id = unicode
     sub_post_id = unicode
     isi = unicode
+    nomor = int
+    yatidak = bool
     
     tags = relation('Tags',pk='pm_id==_id',cascade='delete')
     posts = relation('PostMany',pk='sub_post_id==_id')
@@ -157,7 +159,7 @@ if __name__ == '__main__':
             post.posts[0].posts.append(PostMany(isi='sub2a'))
             post.posts[0].posts.append(PostMany(isi='sub2b'))
             post.posts[0].posts.append(PostMany(isi='sub2c'))
-            post.posts[1].tags.append(Tags(isi='sub1b tags'))
+            post.posts[1].tags.append(Tags(isi=['sub1b tags']))
             post.tags[0].posts[0].tags.append(Tags(isi=['anvie','luna','exa']))
             post.tags[0].posts[0].tags.append(Tags(isi=['sky','walker']))
             
@@ -175,7 +177,7 @@ if __name__ == '__main__':
             self.assertEqual( post.tags.count(), 1 )
             self.assertEqual( post.tags[0].posts[0].isi, 'post at mouse and cat tags' )
             self.assert_( 'mouse' in post.tags[0].isi and 'cat' in post.tags[0].isi )
-            self.assertEqual( post.posts[1].tags[0].isi, 'sub1b tags' )
+            self.assertEqual( post.posts[1].tags[0].isi, ['sub1b tags'] )
             self.assert_( 'exa' in post.tags[0].posts[0].tags[0].isi )
             self.assertEqual( post.posts[1].posts.count(), 0  )
             subpost = post.tags[0].posts[0]
@@ -199,7 +201,7 @@ if __name__ == '__main__':
             
             self.assertTrue( user, None )
             
-            user.wallposts.append(WallPost(message='tester is test',via='unitest',ruid=2))
+            user.wallposts.append(WallPost(message='tester is test',via='unitest',ruid=2,wuid=2))
             user.save()
             
             self.assertEqual( user.wallposts.count(), 1 )
@@ -259,7 +261,7 @@ if __name__ == '__main__':
             user = monga.col(User).new(name='new_user',user_id=55)
             post = monga.col(PostMany).new(isi='apakekdah')
             post.posts.append(PostMany(isi='apaya'))
-            post.tags.append(Tags(isi='tags ajah'))
+            post.tags.append(Tags(isi=['tags ajah']))
             
             user.save()
             post.save()
@@ -275,7 +277,7 @@ if __name__ == '__main__':
             self.assertEqual( post.posts.count(), 1 )
             self.assertEqual( post.posts[0].isi, 'apaya' )
             self.assertEqual( post.tags.count(), 1 )
-            self.assertEqual( post.tags[0].isi, 'tags ajah' )
+            self.assertEqual( post.tags[0].isi, ['tags ajah'] )
             self.assert_( hasattr(user.__dict__['_data'], '_metaname_') )
             self.assertEqual( user.__dict__['_data']._metaname_, 'User' )
             self.assertEqual( post.__dict__['_data']._metaname_, 'PostMany' )
@@ -283,7 +285,7 @@ if __name__ == '__main__':
             
             self.assertEqual( monga.col(Tags).find().count() , 1 )
             
-            post.tags.append(Tags(isi='tags ajah-2'))
+            post.tags.append(Tags(isi=['tags ajah-2']))
             
             post.save()
             
@@ -303,10 +305,10 @@ if __name__ == '__main__':
             
             self.assertEqual( monga.col(Tags).count(), 0 )
             
-            post.tags.append( Tags(isi='123a') )
-            post.tags.append( Tags(isi='123a') )
-            post.tags.append( Tags(isi='123b') )
-            post.tags.append( Tags(isi='123b') )
+            post.tags.append( Tags(isi=['123a']) )
+            post.tags.append( Tags(isi=['123a']) )
+            post.tags.append( Tags(isi=['123b']) )
+            post.tags.append( Tags(isi=['123b']) )
             
             post.save()
             
@@ -387,7 +389,38 @@ if __name__ == '__main__':
             self.assertEqual( post1.tags[0].isi, 'cat' )
             self.assertEqual( post1.tags[0].posts.count(), 2 )
             self.assertEqual( post3.tags[0].posts.count(), 3 )
-            self.assertEqual( post3.tags[0].posts.sort(_id=1).all()[0].isi, 'post-2' )
+            
+        
+        def test_data_type(self):
+            
+            monga._db.test.remove({})
+            
+            post = monga.col(PostMany).new(isi='test')
+            post.save()
+            
+            post.nomor = 5
+            post.yatidak = True
+            
+            post.save()
+            del post
+            
+            post = monga.col(PostMany).find_one(isi='test')
+            
+            self.assertEqual( post.nomor, 5 )
+            
+        def test_smart_object_relation(self):
+            
+            user = monga.col(User).new(name='tester-smart-obj',user_id=55)
+            user.save()
+            
+            user.wallposts.append(WallPost(message='test',writter=user))
+            user.save()
+            
+            self.assertEqual( user.wallposts[0].writter.name, 'tester-smart-obj' )
+            
+            user.delete()
+            
+            self.assertEqual( monga.col(User).count(name='tester-smart-obj'), 0 )
             
         
     suite = unittest.TestLoader().loadTestsFromTestCase(mongo_test)
