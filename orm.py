@@ -49,6 +49,7 @@ class relation(object):
             if not self._backref:
                 raise RelationError, "many-to-many relation need a backref"
             
+            self._backref = self._backref.split(':')
             self._keyrel = self._keyrel.split(':')
 
         else:
@@ -127,12 +128,8 @@ class relation(object):
         
         if self._type == 'many-to-many':
             
-            if hasattr( self._parent_class.__dict__['_data'], self._keyrel[0] ):
-                rv = {self._keyrel[1] : {'$in' : getattr(self._parent_class.__dict__['_data'], self._keyrel[0]) }}
-            else:
-                rv = {self._backref : {'$in' : [getattr(self._parent_class.__dict__['_data'], self._keyrel[1]),] }}
-            
-            return rv
+            return {self._keyrel[1] : {'$in' : getattr(self._parent_class.__dict__['_data'], self._keyrel[0]) }}
+
         else:
             params = dict(map( lambda x: (x, getattr(self._parent_class.__dict__['_data'],x[1:]) ), self.cond.raw.values() ))
             
@@ -293,17 +290,24 @@ class relation(object):
                     if not hasattr( data.__dict__['_data'], self._keyrel[1] ):
                         raise RelationError, "many-to-many relation `%s` empty keyrel for `%s`" % (data.__class__.__name__,self._keyrel[1])
                     
-                    if self._parent_class._db[data._collection_name] \
-                        .find({
-                            '_metaname_'    :   data.__class__.__name__,
-                            self._keyrel[1] :   getattr( data.__dict__['_data'], self._keyrel[1] )
-                            }).count() == 0:
- 
-                        data.save()
-                        
-                    getattr( self._parent_class.__dict__['_data'], self._keyrel[0] ) \
-                        .append( getattr( data.__dict__['_data'], self._keyrel[1] ) )
-                        
+                    key = getattr( data.__dict__['_data'], self._keyrel[1] )
+                    
+                    # check if key already exists, prevent multiple reinsertion metadata
+                    if key not in getattr( self._parent_class.__dict__['_data'], self._keyrel[0] ):
+                        getattr( self._parent_class.__dict__['_data'], self._keyrel[0] ).append( key  )
+                    
+                    if not hasattr( data.__dict__['_data'], self._backref[0] ):
+                        setattr( data.__dict__['_data'], self._backref[0], [] )
+                     
+                    key = getattr( self._parent_class.__dict__['_data'], self._backref[1] )
+                    
+                    # check if key already exists, prevent multiple reinsertion metadata
+                    if key not in getattr( data.__dict__['_data'], self._backref[0] ):
+                        getattr( data.__dict__['_data'], self._backref[0] ).append( key )
+                    
+                    # update child relation
+                    data.__dict__['_data']._id = self._parent_class._db[self._parent_class._collection_name].save(data.to_dict())
+                    
                     
             if self._type == 'many-to-many':
                 # save/update parent class

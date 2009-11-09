@@ -1,6 +1,7 @@
 #@TODO: finish this code
 from doc import Doc
 from pymongo.dbref import DBRef
+from pymongo.objectid import ObjectId
 from nested import Nested
 from antypes import *
 from exc import *
@@ -10,8 +11,16 @@ import types
 
 
 class SuperDoc(Doc):
+    '''Advanced document for mongo ORM data model
+    '''
     
     def __init__(self, _db=None, **datas):
+        
+        self.__load( _db, **datas )
+        
+        
+        
+    def __load(self, _db, **datas):
         
         self.__dict__['_data'] = Nested()
         
@@ -61,6 +70,7 @@ class SuperDoc(Doc):
         setattr(self,'_db',_db)
         
         self.__dict__['_modified_childs'] = []
+        
         
     def bind_db(self, db):
         self._db = db
@@ -145,6 +155,22 @@ class SuperDoc(Doc):
             
                 getattr(t,attr)( *args, **kwargs )
                 
+                
+    def refresh(self):
+        '''Reload data from database, for keep data up-to-date
+        '''
+        
+        if not hasattr(self, '_id') or self._id is None:
+            raise SuperDocError, "Cannot refresh data from db, may unsaved document?"
+        
+        doc = self._db[self._collection_name].find_one(ObjectId(str(self._id)))
+        
+        if not doc:
+            return False
+        
+        self.__load( self._db, **dictarg(doc) )
+        
+        return True
 
     def __getitem__(self, k):
         return getattr(self.__dict__['_data'], k)

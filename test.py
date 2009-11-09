@@ -119,14 +119,14 @@ class PostFlip(SuperDoc):
     _collection_name = 'test'
     
     
-    tags = relation('TagFlip',type='many-to-many',keyrel='_tags:_id',backref='_posts')
+    tags = relation('TagFlip',type='many-to-many',keyrel='_tags:_id',backref='_posts:_id')
     
     
 class TagFlip(SuperDoc):
     
     _collection_name = 'test'
     
-    posts = relation('PostFlip',type='many-to-many',keyrel='_posts:_id',backref='_tags')
+    posts = relation('PostFlip',type='many-to-many',keyrel='_posts:_id',backref='_tags:_id')
     
     
     
@@ -352,30 +352,30 @@ if __name__ == '__main__':
             post3 = monga.col(PostFlip).new(isi='post-3')
             post4 = monga.col(PostFlip).new(isi='post-4')
             
-            t1 = TagFlip(isi='cat')
-            t2 = TagFlip(isi='lazy')
-            t3 = TagFlip(isi='dog')
-            t4 = TagFlip(isi='animal')
-            t5 = TagFlip(isi='bird')
+            cat = TagFlip(isi='cat')
+            lazy = TagFlip(isi='lazy')
+            dog = TagFlip(isi='dog')
+            animal = TagFlip(isi='animal')
+            bird = TagFlip(isi='bird')
             
-            monga.col(TagFlip).insert(t1)
-            monga.col(TagFlip).insert(t2)
-            monga.col(TagFlip).insert(t3)
-            monga.col(TagFlip).insert(t4)
-            monga.col(TagFlip).insert(t5)
+            monga.col(TagFlip).insert(cat)
+            monga.col(TagFlip).insert(lazy)
+            monga.col(TagFlip).insert(dog)
+            monga.col(TagFlip).insert(animal)
+            monga.col(TagFlip).insert(bird)
             
-            post1.tags.append(t1)
-            post1.tags.append(t2)
-            post1.tags.append(t3)
+            post1.tags.append(cat)
+            post1.tags.append(lazy)
+            post1.tags.append(dog)
             
-            post2.tags.append(t4)
-            post2.tags.append(t1)
-            post2.tags.append(t5)
+            post2.tags.append(animal)
+            post2.tags.append(cat)
+            post2.tags.append(bird)
             
-            post3.tags.append(t4)
-            post3.tags.append(t5)
+            post3.tags.append(animal)
+            post3.tags.append(bird)
             
-            post4.tags.append(t4)
+            post4.tags.append(animal)
             
             post1.save()
             post2.save()
@@ -389,6 +389,30 @@ if __name__ == '__main__':
             self.assertEqual( post1.tags[0].isi, 'cat' )
             self.assertEqual( post1.tags[0].posts.count(), 2 )
             self.assertEqual( post3.tags[0].posts.count(), 3 )
+            
+            post5 = PostFlip(isi='sky')
+            
+            monga.col(PostFlip).insert(post5)
+            
+            bird.posts.append(post5)
+            bird.save()
+            
+            self.assertEqual( bird.posts.count(), 3 )
+            
+            # enter same tag test
+            bird.posts.append(post5)
+            bird.save()
+            
+            # seharusnya gak nambah
+            self.assertEqual( bird.posts.count(), 3 )
+            
+            bird.posts.append(post1)
+            bird.save()
+            
+            # test refresh
+            self.assertTrue( post1.refresh() )
+            
+            self.assertEqual( post1.tags.count(), 4 )
             
         
         def test_data_type(self):
