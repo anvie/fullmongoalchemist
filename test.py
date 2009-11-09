@@ -444,6 +444,28 @@ if __name__ == '__main__':
             post.writter = user
             post.save()
             
+            class parent(SuperDoc):
+                _collection_name = 'test'
+            
+                child_id = unicode
+            
+                anak = relation('child',pk='_id==child_id',listmode=False)
+            
+            class child(SuperDoc):
+                _collection_name = 'test'
+                
+            mapper(parent,child)
+                
+            ayah = parent(monga._db,name='ayah-exa')
+            exa = monga.col(child).new(name='exa-kun')
+            exa.save()
+            ayah.anak = exa
+            ayah.save()
+            
+            ayah = monga.col(parent).find_one(name='ayah-exa')
+            
+            self.assertEqual( ayah.anak.name, 'exa-kun' )
+            
             post = monga.col(WallPost).find_one(message='post-smart-obj')
             
             self.assertEqual( post.writter.name, 'tester-smart-obj')

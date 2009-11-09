@@ -216,7 +216,8 @@ class SuperDoc(Doc):
         # just map it to pk==fk
         if hasattr(self.__class__,k) and type( getattr(self.__class__,k) ) == relation and isinstance(v,SuperDoc):
             r = getattr(self.__class__, k)
-            setattr( self.__dict__['_data'], r._pk[1], getattr( v, r._pk[0] ) )
+            fkey = getattr( v, r._pk[0] )
+            setattr( self.__dict__['_data'], r._pk[1], type(fkey) == ObjectId and str(fkey) or fkey )
         else:
             Doc.__setattr__(self, k , v)
 

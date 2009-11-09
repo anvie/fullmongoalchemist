@@ -446,4 +446,4 @@ def mapper(*objs):
     
     global mapped_user_class_docs
     
-    mapped_user_class_docs = dict(map(lambda x: (x.__name__, x), objs ))
+    mapped_user_class_docs.update( dict(map(lambda x: (x.__name__, x), objs )) )
