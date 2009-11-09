@@ -22,7 +22,7 @@ class SuperDoc(Doc):
         
     def __load(self, _db, **datas):
         
-        self.__dict__['_data'] = Nested()
+        self.__dict__['_data'] = Nested(datas)
         
         _has_opt = hasattr(self,"_opt")
         
@@ -37,7 +37,7 @@ class SuperDoc(Doc):
         for k, v in datas.iteritems():
             self.__setattr__( k, v )
             
-        Doc.__init__(self, datas)
+        #Doc.__init__(self, datas)
         
         self.__sanitize()
         
