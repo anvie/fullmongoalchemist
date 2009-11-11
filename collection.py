@@ -186,21 +186,18 @@ class Collection:
         """
 
         if '_id' in kwargs:
-            id = ObjectId(str(kwargs['_id']))
-            args = {'_id':id,'_metaname_':self._doctype.__name__}
-
+            _cond = ObjectId(str(kwargs['_id']))
+            #args = {'_id':id,'_metaname_':self._doctype.__name__}
         else:
             kwargs['_metaname_'] = self._doctype.__name__
-            args = self._parse_query(kwargs)
+            _cond = self._parse_query(kwargs)
 
-        docs = self._db[self._doctype._collection_name].find_one(args)
+        docs = self._db[self._doctype._collection_name].find_one( _cond )
 
         if docs is None:
             return None
-        
-        docs = dict(map(lambda x: (str(x[0]), x[1]), docs.items()))
 
-        return self._doctype( self._db, **docs )
+        return self._doctype( self._db, **dict(map(lambda x: (str(x[0]), x[1]), docs.items())) )
         
         
     def count(self, **kwargs):

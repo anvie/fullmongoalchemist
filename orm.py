@@ -4,6 +4,7 @@ from antypes import *
 from exc import RelationError
 from doclist import DocList
 from pymongo.objectid import ObjectId
+from const import reserved_words
 
 import random
 import copy
@@ -359,7 +360,7 @@ class relation(object):
         
     def __getattr__(self, key):
         
-        if key in ('_db','_parent_class','listmode','_type','_keyrel','rel_class','_cond'):
+        if key in reserved_words:
             return object.__getattribute__(self, key)
         
         if not hasattr( self.__dict__['_data'], key ):

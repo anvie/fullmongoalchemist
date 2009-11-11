@@ -1,5 +1,5 @@
 #@TODO: finish this code
-from doc import Doc
+from doc import Doc, reserved_words
 from pymongo.dbref import DBRef
 from pymongo.objectid import ObjectId
 from nested import Nested
@@ -186,9 +186,10 @@ class SuperDoc(Doc):
             
             rel = getattr( self, x )
             if rel is not None:
+                rel._parent_class = self # don't know it is necessary??
                 rv = rel.reload()
                 if rel._type == 'one-to-one':
-                    if rv is None:
+                    if type(rv) == types.NoneType:
                         setattr ( self, x, None ) # null it
 
             else:
@@ -229,9 +230,8 @@ class SuperDoc(Doc):
         
     def __setattr__(self, k, v):
         
-        if k in ('_parent_class','_db','_echo'):
-            Doc.__setattr__(self, k , v)
-            return
+        if k in reserved_words:
+            return Doc.__setattr__(self, k , v)
         
         if self.__dict__.has_key('_opt') and self.__dict__['_opt'].get('strict') == True:
             if self.__has_entryname( k ) == False:

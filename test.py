@@ -531,9 +531,7 @@ if __name__ == '__main__':
             ayah.save()
             
             ayah = monga.col(parent).find_one(name='ayah-exa')
-            
-            ayah._echo = True
-            
+            #ayah._echo = True
             self.assertEqual( ayah.anak.name, 'exa-kun' )
             
             post = monga.col(WallPost).find_one(message='post-smart-obj')
