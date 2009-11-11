@@ -22,11 +22,7 @@ class relation(object):
         
         self.__internal_params = kwargs;
         
-        
-        if kwargs.get('listmode', True):
-            self.__dict__['_data'] = []
-        else:
-            self.__dict__['_data'] = None
+        self.__dict__['_data'] = kwargs.get('listmode') and [] or None
             
         self._old_hash = -1
         self._current_hash = 0
@@ -64,10 +60,10 @@ class relation(object):
             
             cond = kwargs.get('cond')
             if cond:
-                self.cond = isinstance(cond, ConditionQuery) and cond or and_(cond)
+                self._cond = isinstance(cond, ConditionQuery) and cond or and_(cond)
             else:
                 # use pk
-                self.cond = and_(**{self._pk[0]:':%s' % self._pk[1]})
+                self._cond = and_(**{self._pk[0]:':%s' % self._pk[1]})
         
         self.cascade = kwargs.get('cascade', None)
         self._parent_class = None
@@ -82,21 +78,12 @@ class relation(object):
         return relation(self._rel_class_name, **self.__internal_params)
 
     def __repr__(self):
-        
         self.refresh()
-        if self.listmode:
-            rv = self.__dict__['_cached_repr']
-        else:
-            rv = self.__dict__['_data']
-            
-        return repr(rv)
+        return repr( self.listmode and self.__dict__['_cached_repr'] or self.__dict__['_data'] )
         
-        #return '<RelationMapper>'
-
     @property
     def changed(self):
-        rv = self._current_hash != self._old_hash
-        return rv
+        return self._current_hash != self._old_hash
 
     def _update_hash(self):
         self._current_hash = str(abs(hash(random.random())))
@@ -105,7 +92,6 @@ class relation(object):
 
         if self.changed:
             #print 'data changed, (re)populate list...'
-            
             self.reload()
             
         if self.listmode:
@@ -128,8 +114,7 @@ class relation(object):
             rv = { self._keyrel[1] : {'$in' : getattr(self._parent_class.__dict__['_data'], self._keyrel[0])} }
 
         else:
-            params = dict(map( lambda x: (x, getattr(self._parent_class.__dict__['_data'],x[1:]) ), self.cond.raw.values() ))
-            rv = self.cond.where( **params )
+            rv = self._cond.where( **dict(map( lambda x: (x, getattr(self._parent_class.__dict__['_data'],x[1:]) ), self._cond.raw.values() )) )
         
         if rv and type(rv) == dict:
             rv['_metaname_'] = self._rel_class_name
@@ -139,14 +124,11 @@ class relation(object):
 
     def reload(self):
         
-        if not hasattr( self, '_parent_class' ):
-            return None
+        if not hasattr( self, '_parent_class' ): return None
         
-        if self._parent_class is None:
-            return None
+        if self._parent_class is None: return None
         
-        if self._parent_class._saved() == False:
-            return None
+        if self._parent_class._saved() == False: return None
             
         self._old_hash = self._current_hash
  
@@ -154,20 +136,13 @@ class relation(object):
         
         #print 'cond: %s' % _cond
         
-        if not _cond:
-            return None 
+        if not _cond: return None 
         
         rel_class = self._get_rel_class()
 
         if self.listmode:
             
-            self.__dict__['_cached_repr'] = RelationIterableProxy (
-                            DocList( self._parent_class._db,
-                                    rel_class,
-                                    self._parent_class._db[rel_class._collection_name].find( _cond )
-                                    )
-                                         ).sort(_id=1).all()
-            
+
             self.__dict__['_data'] = RelationIterableProxy (
                             DocList( self._parent_class._db,
                                     rel_class,
@@ -175,15 +150,16 @@ class relation(object):
                                     )
                                          )
             
+            self.__dict__['_cached_repr'] = self.__dict__['_data'].sort(_id=1).all()
+            self.__dict__['_data'] = self.__dict__['_data'].tofirst()
+            
             return self.__dict__['_data']
             
-
+        # single mode one-to-one type
         rv = self._parent_class._db[rel_class._collection_name].find_one( _cond )
-
-        if rv:
-            self.__dict__['_data'] = rel_class( self._parent_class._db, **dictarg(rv) )
+        self.__dict__['_data'] = rv and rel_class( self._parent_class._db, **dictarg(rv) ) or None
             
-        return self.__dict__['_data']
+        return rv
         
         
     def _get_rel_class(self):
@@ -198,7 +174,6 @@ class relation(object):
 
 
     def _is_data_related(self, data):
-        
         return data.__class__.__name__ == self._rel_class_name
         
 
@@ -215,10 +190,11 @@ class relation(object):
         data.validate()
         
         data.bind_db( self._parent_class._db )
-        self.__dict__['_new_data'].append(data)
-        self.__dict__['_cached_repr'].append(data)
         
-        self.__child_modif(item=data,diff='add-new')
+        self.__dict__['_new_data'].append(locals()["data"])
+        self.__dict__['_cached_repr'].append(locals()["data"])
+        
+        self.__child_modif(item=locals()["data"],diff='add-new')
         
     
     def remove(self, data):
@@ -235,12 +211,9 @@ class relation(object):
 
         if self.listmode:
             
-            _datas = []
-            _datas.extend(self.__dict__['_new_data'])
-            _datas.extend(self.__dict__['_cached_repr'])
-            
-            _datas = list(set(_datas))
-            
+            _datas = [ x for x in self.__dict__['_new_data'] ]
+            _datas.extend([ x for x in self.__dict__['_cached_repr'] if x not in _datas ])
+
             for data in _datas:
                 
                 #   
@@ -249,31 +222,25 @@ class relation(object):
                 
                 if self._type == 'one-to-many':
                     
-                    if not data._changed():
-                        continue
+                    if not data._changed(): continue
                     
                     if hasattr( self._parent_class.__dict__['_data'], self._pk[1] ):
                         
                         new_attr = getattr(self._parent_class.__dict__['_data'], self._pk[1])
                         new_attr = type(new_attr) in [int,long] and new_attr or type(new_attr) == ObjectId and new_attr.binary.encode('hex') or new_attr is not None and str(repr(new_attr)) or new_attr
                 
-                        data.__setattr__(
-                            self._pk[0],
-                            new_attr
-                        )
+                        data.__setattr__(self._pk[0],new_attr)
                     else:
                         raise RelationError, "Cannot build relation metadata invalid pk"
                     
                     rels = filter( lambda x: type( getattr(data.__class__, x) ) == relation, dir(data.__class__) )
                     
-                    #global mapped_user_class_docs
                     
                     for rel in rels:
                         
                         if not hasattr(data.__dict__['_data'], rel):
                             continue
                         
-                        r = getattr(data.__class__, rel)
                         rawd = getattr(data.__dict__['_data'], rel)
                         
                         if rawd is None:
@@ -282,6 +249,7 @@ class relation(object):
                         if type( rawd ) == RelationDataType:
                             continue
                         
+                        r = getattr(data.__class__, rel)
                         v = getattr( rawd , r._pk[0] )
                         v = type(v) == ObjectId and v.binary.encode('hex') or v
                         
@@ -390,7 +358,7 @@ class relation(object):
         
     def __getattr__(self, key):
         
-        if key in ('_db','_parent_class','listmode','_type','_keyrel','rel_class'):
+        if key in ('_db','_parent_class','listmode','_type','_keyrel','rel_class','_cond'):
             return object.__getattribute__(self, key)
         
         self.refresh()

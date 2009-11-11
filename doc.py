@@ -52,7 +52,7 @@ class Doc(object):
         elif obj_type == relation:
             object.__setattr__(self, key, value)
             value = RelationDataType(value)
-            
+            setattr(self.__dict__['_data'], key, value)
         else:
             global allowed_data_types
             

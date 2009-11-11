@@ -388,6 +388,10 @@ if __name__ == '__main__':
             self.assertEqual( post3.tags.count(), 2 )
             
             self.assertEqual( post1.tags[0].isi, 'cat' )
+            
+            post1.tags[0].refresh()
+            post3.tags[0].refresh()
+            
             self.assertEqual( post1.tags[0].posts.count(), 2 )
             self.assertEqual( post3.tags[0].posts.count(), 3 )
             
@@ -416,7 +420,7 @@ if __name__ == '__main__':
             self.assertEqual( post1.tags.count(), 4 )
             
             #
-            # test relation many-to-many but uses it model self
+            # test relation many-to-many but uses model it self
             #
             user = monga.col(User).new(name='ada-deh',user_id=100)
             
@@ -432,6 +436,10 @@ if __name__ == '__main__':
             user.save()
             
             self.assertEqual( user.friends.count(), 2 )
+            
+            exa.refresh()
+            didit.refresh()
+            
             self.assertEqual( exa.friends.count(), 1 )
             self.assertEqual( didit.friends.count(), 1 )
             
@@ -494,8 +502,15 @@ if __name__ == '__main__':
             user.save()
             
             post = WallPost(monga._db,message='post-smart-obj')
+            
+            post.save()
+            
+            self.assertEqual( post.writter, None )
+            
             post.writter = user
             post.save()
+            
+            self.assertEqual( post.writter.name, user.name )
             
             class parent(SuperDoc):
                 _collection_name = 'test'
@@ -530,8 +545,17 @@ if __name__ == '__main__':
             self.assertEqual( monga.col(User).count(name='tester-smart-obj'), 0 )
             
         
-    suite = unittest.TestLoader().loadTestsFromTestCase(mongo_test)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+        
+    def main():
+        suite = unittest.TestLoader().loadTestsFromTestCase(mongo_test)
+        unittest.TextTestRunner(verbosity=2).run(suite)
+        
+    #main()
+    import cProfile
+    cProfile.run('main()','fooprof')
+    import pstats
+    p = pstats.Stats('fooprof')
+    p.strip_dirs().sort_stats(-1).print_stats()
 
 
     #raise 'test'

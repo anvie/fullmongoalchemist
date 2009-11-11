@@ -16,11 +16,11 @@ class SuperDoc(Doc):
     
     def __init__(self, _db=None, **datas):
         
-        self.__load( _db, **datas )
+        self._load( _db, **datas )
         
         
         
-    def __load(self, _db, **datas):
+    def _load(self, _db, **datas):
         
         self.__dict__['_data'] = Nested(datas)
         
@@ -37,10 +37,8 @@ class SuperDoc(Doc):
         for k, v in datas.iteritems():
             self.__setattr__( k, v )
             
-        #Doc.__init__(self, datas)
-        
+
         self.__sanitize()
-        
         
         # buat metaname untuk modelnya
         setattr( self.__dict__['_data'], '_metaname_', self.__class__.__name__ )
@@ -68,6 +66,9 @@ class SuperDoc(Doc):
             
             setattr(self,x,_t)
             
+            if _t._type == 'many-to-many':
+                if not hasattr(self, _t._keyrel[0]):
+                    setattr( self, _t._keyrel[0], [] ) # reset m2m relation meta list
         
 
         self.__dict__['_modified_childs'] = []
@@ -133,7 +134,9 @@ class SuperDoc(Doc):
         else:
             raise SuperDocError, "Recursion limit reached, max %d" % MAX_RECURSION_DEEP
         
-    
+        # refresh relation state
+        self.__map_relation()
+        
 
     def _set_relation_attr(self, attr, val):
 
@@ -143,7 +146,7 @@ class SuperDoc(Doc):
             
             setattr(t.__class__, attr, val)
             
-            setattr(self.__class__, x, t)
+            #setattr(self.__class__, x, t)
 
 
     def _call_relation_attr(self, attr, *args, **kwargs):
@@ -164,18 +167,37 @@ class SuperDoc(Doc):
         if not hasattr(self, '_id') or self._id is None:
             raise SuperDocError, "Cannot refresh data from db, may unsaved document?"
         
-        doc = self._db[self._collection_name].find_one(ObjectId(str(self._id)))
+        doc = self._db[self._collection_name].find_one(self._id)
         
         if not doc:
             return False
         
-        self.__load( self._db, **dictarg(doc) )
-        
-        for x in filter( lambda x: type( getattr(self.__class__,x) ) == relation , dir(self.__class__) ):
-            
-            getattr( self, x ).reload()
+        self._load( self._db, **dictarg(doc) )
+        self.__map_relation()
         
         return True
+    
+    
+    def __map_relation(self):
+        '''Untuk menge-map relasi dengan cara me-reload semua relasinya
+        agar up-to-date dengan db.
+        '''
+        for x in filter( lambda x: type( getattr(self.__class__,x) ) == relation , dir(self.__class__) ):
+            
+            rel = getattr( self, x )
+            if rel is not None:
+                rv = rel.reload()
+                if rel._type == 'one-to-one':
+                    if rv is None:
+                        setattr ( self, x, None ) # null it
+
+            else:
+                # reload relation
+                rel = getattr( self.__class__, x ).copy()
+                rel._parent_class = self
+                rel.reload()
+                setattr( self, x, rel )
+    
     
     def __cmp__(self, other):
         if not hasattr( self, '_id') or not hasattr( other, '_id' ):
@@ -201,8 +223,7 @@ class SuperDoc(Doc):
     
     
     def __has_entryname(self, name):
-        if name in ['_db','_id','_metaname_']:
-            return True
+        if name in ('_db','_id','_metaname_'): return True
         return (hasattr(self.__class__, name) and type(getattr(self.__class__, name)) in [relation, types.TypeType]) or hasattr(self.__class__, '_x_%s' % name)
         
         
@@ -210,6 +231,7 @@ class SuperDoc(Doc):
         
         if k in ('_parent_class','_db'):
             Doc.__setattr__(self, k , v)
+            return
         
         if self.__dict__.has_key('_opt') and self.__dict__['_opt'].get('strict') == True:
             if self.__has_entryname( k ) == False:
@@ -244,7 +266,6 @@ class SuperDoc(Doc):
         
     
     def _changed(self):
-        
         return not self._saved() or len(self.__dict__['_modified_childs']) > 0
         
         
@@ -276,10 +297,12 @@ class SuperDoc(Doc):
             
             all_rela_obj = self._db[rela._collection_name].find({ keyrel[0]: mykey })
             
+            col_save = self._db[rela._collection_name].save
+            
             for rela_obj in all_rela_obj:
                 
                 rela_obj[keyrel[0]].remove(mykey)
-                self._db[rela._collection_name].save(rela_obj)
+                col_save(rela_obj)
                 
         
         Doc.delete(self)
