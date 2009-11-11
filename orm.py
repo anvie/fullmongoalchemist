@@ -393,6 +393,9 @@ class relation(object):
         if key in ('_db','_parent_class','listmode','_type','_keyrel','rel_class'):
             return object.__getattribute__(self, key)
         
+        if not hasattr( self.__dict__['_data'], key ):
+            return None
+        
         self.refresh()
         
         return getattr( self.__dict__['_data'], key  )
