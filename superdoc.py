@@ -17,7 +17,7 @@ class SuperDoc(Doc):
     def __init__(self, _db=None, **datas):
         
         self._load( _db, **datas )
-        
+        self._echo = False
         
         
     def _load(self, _db, **datas):
@@ -138,15 +138,15 @@ class SuperDoc(Doc):
         self.__map_relation()
         
 
-    def _set_relation_attr(self, attr, val):
-
-        for x in filter( lambda x: type(getattr(self.__class__,x)) == relation, dir(self.__class__) ):
-            
-            t = getattr(self,x)
-            
-            setattr(t.__class__, attr, val)
-            
-            #setattr(self.__class__, x, t)
+    #def _set_relation_attr(self, attr, val):
+    #
+    #    for x in filter( lambda x: type(getattr(self.__class__,x)) == relation, dir(self.__class__) ):
+    #        
+    #        t = getattr(self,x)
+    #        
+    #        setattr(t.__class__, attr, val)
+    #        
+    #        #setattr(self.__class__, x, t)
 
 
     def _call_relation_attr(self, attr, *args, **kwargs):
@@ -223,13 +223,13 @@ class SuperDoc(Doc):
     
     
     def __has_entryname(self, name):
-        if name in ('_db','_id','_metaname_'): return True
+        if name in ('_db','_id','_metaname_','_parent_class','_echo'): return True
         return (hasattr(self.__class__, name) and type(getattr(self.__class__, name)) in [relation, types.TypeType]) or hasattr(self.__class__, '_x_%s' % name)
         
         
     def __setattr__(self, k, v):
         
-        if k in ('_parent_class','_db'):
+        if k in ('_parent_class','_db','_echo'):
             Doc.__setattr__(self, k , v)
             return
         

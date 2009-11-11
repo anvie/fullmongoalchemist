@@ -83,7 +83,7 @@ class relation(object):
         
     @property
     def changed(self):
-        return self._current_hash != self._old_hash
+        return self._current_hash != self._old_hash or len(self.__dict__['_new_data']) > 0 or len(self.__dict__['_deleted_item']) > 0
 
     def _update_hash(self):
         self._current_hash = str(abs(hash(random.random())))
@@ -134,7 +134,8 @@ class relation(object):
  
         _cond = self.__get_where_clause()
         
-        #print 'cond: %s' % _cond
+        if self._parent_class._echo == True:
+            print 'query: %s' % repr(_cond)
         
         if not _cond: return None 
         
@@ -159,7 +160,7 @@ class relation(object):
         rv = self._parent_class._db[rel_class._collection_name].find_one( _cond )
         self.__dict__['_data'] = rv and rel_class( self._parent_class._db, **dictarg(rv) ) or None
             
-        return rv
+        return self.__dict__['_data']
         
         
     def _get_rel_class(self):
@@ -191,10 +192,10 @@ class relation(object):
         
         data.bind_db( self._parent_class._db )
         
-        self.__dict__['_new_data'].append(locals()["data"])
-        self.__dict__['_cached_repr'].append(locals()["data"])
+        self.__dict__['_new_data'].append(data)
+        self.__dict__['_cached_repr'].append(data)
         
-        self.__child_modif(item=locals()["data"],diff='add-new')
+        self.__child_modif(item=data,diff='add-new')
         
     
     def remove(self, data):
