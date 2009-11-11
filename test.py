@@ -3,6 +3,7 @@
 from fma import MongoDB, SuperDoc, Collection
 from fma.orm import relation, mapper
 from fma.antypes import *
+
 import datetime
 
 #monga = MongoDB('anvie', '', '', '127.0.0.1', 27017)
@@ -10,7 +11,7 @@ import datetime
 
 class User(SuperDoc):
 
-    _collection_name = 'user'
+    _collection_name = 'test'
     
     user_id = int
     name = unicode
@@ -19,7 +20,7 @@ class User(SuperDoc):
     _creation_time = datetime.datetime
     
     wallposts = relation('WallPost',pk='wuid==user_id',cond=or_(wuid=':user_id',ruid=':user_id'),listmode=True,cascade="delete")
-    
+    friends = relation('User',type='many-to-many',keyrel='_friends:_id',backref='_friends:_id')
     
     _opt = {
         'req' : ['user_id','name'],
@@ -33,7 +34,7 @@ class User(SuperDoc):
     
 class WallPost(SuperDoc):
 
-    _collection_name = 'user.wallpost'
+    _collection_name = 'test'
     
     wuid = int
     ruid = int
@@ -60,7 +61,7 @@ class WallPost(SuperDoc):
 
 class WallPostComment(SuperDoc):
     
-    _collection_name = 'user.wallpost.comment'
+    _collection_name = 'test'
     
     puid = unicode
     wuid = int
@@ -413,6 +414,58 @@ if __name__ == '__main__':
             self.assertTrue( post1.refresh() )
             
             self.assertEqual( post1.tags.count(), 4 )
+            
+            #
+            # test relation many-to-many but uses it model self
+            #
+            user = monga.col(User).new(name='ada-deh',user_id=100)
+            
+            exa = monga.col(User).new(name='exa-tester',user_id=101)
+            didit = monga.col(User).new(name='didit-tester',user_id=102)
+            
+            exa.save()
+            didit.save()
+            
+            user.friends.append(exa)
+            user.friends.append(didit)
+            
+            user.save()
+            
+            self.assertEqual( user.friends.count(), 2 )
+            self.assertEqual( exa.friends.count(), 1 )
+            self.assertEqual( didit.friends.count(), 1 )
+            
+            exa.friends.append( didit )
+            exa.save()
+            
+            self.assertEqual( exa.friends.count(), 2 )
+            
+            exa.friends.remove( didit )
+            
+            exa.save()
+            #exa.refresh()
+            
+            self.assertEqual( exa.friends.count(), 1 )
+            self.assertEqual( exa.friends[0].name, 'ada-deh')
+            
+            self.assertTrue( exa in user.friends )
+            self.assertTrue( didit in user.friends )
+            
+            didit.delete()
+            
+            user.refresh()
+            
+            self.assertTrue( didit not in user.friends )
+            self.assertTrue( exa in user.friends )
+            
+            exa.delete()
+            
+            user.refresh()
+            
+            self.assertTrue( exa not in user.friends )
+            self.assertEqual( user.friends.count(), 0 )
+            
+            del user
             
         
         def test_data_type(self):

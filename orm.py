@@ -30,7 +30,7 @@ class relation(object):
             
         self._old_hash = -1
         self._current_hash = 0
-            
+        self._rel_class_name = rel_class
         
         self.listmode = kwargs.get('listmode', True)
         self._type = kwargs.get('type', self.listmode and 'one-to-many' or 'one-to-one')
@@ -69,9 +69,6 @@ class relation(object):
                 # use pk
                 self.cond = and_(**{self._pk[0]:':%s' % self._pk[1]})
         
-        
-        self.rel_class = rel_class
-        
         self.cascade = kwargs.get('cascade', None)
         self._parent_class = None
         
@@ -82,7 +79,7 @@ class relation(object):
     def copy(self):
         '''Create new copy of me
         '''
-        return relation(self.rel_class, **self.__internal_params)
+        return relation(self._rel_class_name, **self.__internal_params)
 
     def __repr__(self):
         
@@ -109,7 +106,7 @@ class relation(object):
         if self.changed:
             #print 'data changed, (re)populate list...'
             
-            self.get_data()
+            self.reload()
             
         if self.listmode:
             if type(self.__dict__['_data']) == RelationIterableProxy :
@@ -128,17 +125,26 @@ class relation(object):
         
         if self._type == 'many-to-many':
             
-            return {self._keyrel[1] : {'$in' : getattr(self._parent_class.__dict__['_data'], self._keyrel[0]) }}
+            rv = { self._keyrel[1] : {'$in' : getattr(self._parent_class.__dict__['_data'], self._keyrel[0])} }
 
         else:
             params = dict(map( lambda x: (x, getattr(self._parent_class.__dict__['_data'],x[1:]) ), self.cond.raw.values() ))
+            #params['__metaname__'] = self._parent_class.__dict__['_data']._metaname_
             
-        return self.cond.where( **params )
+            rv = self.cond.where( **params )
+        
+        if rv:
+            rv['_metaname_'] = self._rel_class_name
+            
+        return rv
         
 
-    def get_data(self):
+    def reload(self):
         
         if not hasattr( self, '_parent_class' ):
+            return None
+        
+        if self._parent_class is None:
             return None
         
         if self._parent_class._saved() == False:
@@ -153,55 +159,55 @@ class relation(object):
         if not _cond:
             return None 
         
-        bcls = self.__get_rel_class()
+        rel_class = self._get_rel_class()
 
         if self.listmode:
             
             self.__dict__['_cached_repr'] = RelationIterableProxy (
                             DocList( self._parent_class._db,
-                                    bcls,
-                                    self._parent_class._db[bcls._collection_name].find( _cond )
+                                    rel_class,
+                                    self._parent_class._db[rel_class._collection_name].find( _cond )
                                     )
                                          ).sort(_id=1).all()
             
             self.__dict__['_data'] = RelationIterableProxy (
                             DocList( self._parent_class._db,
-                                    bcls,
-                                    self._parent_class._db[bcls._collection_name].find( _cond )
+                                    rel_class,
+                                    self._parent_class._db[rel_class._collection_name].find( _cond )
                                     )
                                          )
             
             return self.__dict__['_data']
             
 
-        rv = self._parent_class._db[bcls._collection_name].find_one( _cond )
+        rv = self._parent_class._db[rel_class._collection_name].find_one( _cond )
 
         if rv:
-            self.__dict__['_data'] = bcls( self._parent_class._db, **dictarg(rv) )
+            self.__dict__['_data'] = rel_class( self._parent_class._db, **dictarg(rv) )
             
         return self.__dict__['_data']
         
-    def __get_rel_class(self):
         
+    def _get_rel_class(self):
         global mapped_user_class_docs
-        return type(self.rel_class) == str and mapped_user_class_docs[self.rel_class] or self.rel_class
-    
+        if not hasattr(self, 'rel_class'):
+            self.rel_class = type(self._rel_class_name) == str and mapped_user_class_docs[self._rel_class_name] or self._rel_class_name
+        return self.rel_class
+
+        
     def explain(self):
         return RelationDataType(self)
 
 
     def _is_data_related(self, data):
         
-        if type(self.rel_class) == str:
-            return data.__class__.__name__ == self.rel_class
-        
-        return data.__class__.__name__ == self.rel_class.__name__
+        return data.__class__.__name__ == self._rel_class_name
         
 
     def append(self, data):
 
         if not self._is_data_related(data):
-            raise RelationError, "data not related: %s <=> %s" % (self.rel_class,type(data))
+            raise RelationError, "data not related: %s <=> %s" % (self._rel_class_name,type(data))
             
             
         if self._type in ('on-to-many','on-to-one') and self._pk[1] != '_id' and not hasattr(self._parent_class.__dict__['_data'], self._pk[1]):
@@ -215,6 +221,16 @@ class relation(object):
         self.__dict__['_cached_repr'].append(data)
         
         self.__child_modif(item=data,diff='add-new')
+        
+    
+    def remove(self, data):
+        
+        x = getattr( self._parent_class.__dict__['_data'], self._keyrel[0] )
+        if data._id in x:
+            self.__dict__['_cached_repr'] = filter( lambda x: x._id != data._id, self.__dict__['_cached_repr']) 
+            x.remove( data._id )
+            return setattr( self._parent_class.__dict__['_data'], self._keyrel[0], x )
+        return False
 
 
     def _save(self):
@@ -285,7 +301,7 @@ class relation(object):
                     if not hasattr( self._parent_class.__dict__['_data'], self._keyrel[0] ):
                         setattr( self._parent_class.__dict__['_data'], self._keyrel[0], [] )
                     
-                    rc = self.__get_rel_class()
+                    rc = self._get_rel_class()
                     
                     if not hasattr( data.__dict__['_data'], self._keyrel[1] ):
                         raise RelationError, "many-to-many relation `%s` empty keyrel for `%s`" % (data.__class__.__name__,self._keyrel[1])
@@ -341,6 +357,9 @@ class relation(object):
         if self.cascade != 'delete':
             #raise RelationError, "not implemented with cascade support"
             return False
+        
+        if self._type == 'many-to-many':
+            raise RelationError, "Many-to-many relation not support cascade"
             
         _datas = self.__dict__['_cached_repr']
         
@@ -373,7 +392,7 @@ class relation(object):
         
     def __getattr__(self, key):
         
-        if key in ('_db','_parent_class','listmode','_type','_keyrel'):
+        if key in ('_db','_parent_class','listmode','_type','_keyrel','rel_class'):
             return object.__getattribute__(self, key)
         
         self.refresh()
@@ -406,6 +425,9 @@ class RelationIterableProxy(object):
     def __init__(self, doclist):
         
         self._doclist = doclist
+        
+    def skip(self, num):
+        return RelationIterableProxy( self._doclist.skip(num) )
     
     def limit(self, num):
         return RelationIterableProxy( self._doclist.limit(num) )
@@ -427,7 +449,7 @@ class RelationIterableProxy(object):
         
     def copy(self):
         return copy.copy( self )
-
+        
 
 
 class RelationDataType(object):
@@ -437,9 +459,9 @@ class RelationDataType(object):
         
     def __repr__(self):
         if self.val._type in ('one-to-many','one-to-one'):
-            return "<relation to [%s pk(%s==%s)]>" % (self.val.rel_class,self.val._pk[0],self.val._pk[1])
+            return "<relation to [%s pk(%s==%s)]>" % (self.val._rel_class_name,self.val._pk[0],self.val._pk[1])
         else:
-            return "<relation to [many-to-many: %s]>" % self.val.rel_class
+            return "<relation to [many-to-many: %s]>" % self.val._rel_class_name
     
 
 def mapper(*objs):

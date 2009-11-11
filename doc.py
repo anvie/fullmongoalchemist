@@ -56,13 +56,11 @@ class Doc(object):
         else:
             global allowed_data_types
             
-            if obj_type not in allowed_data_types:
+            if obj_type in allowed_data_types:
+                setattr(self.__dict__['_data'], key, value)
+            else:    
                 object.__setattr__(self, key, value)
-                return
-            
-        setattr(self.__dict__['_data'], key, value)
-        
-        pass
+
     
     def to_dict(self):
         """Public wrapper for converting an Nested object into a dict.

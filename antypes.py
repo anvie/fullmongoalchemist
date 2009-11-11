@@ -16,6 +16,8 @@ class ConditionQuery(object):
     def where_value(self):
         return None
     
+    def __setitem__(self, k, v):
+        self._cond[k] = v
 
     def where(self,**params):
 

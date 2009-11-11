@@ -59,6 +59,7 @@ class SuperDoc(Doc):
                             '%s has no attribute name %s for default value assignment' \
                             % (self.__class__.__name__,k)
 
+        setattr(self,'_db',_db)
 
         for x in filter( lambda x: type(getattr(self,x)) == relation, dir(self) ):
             
@@ -67,8 +68,8 @@ class SuperDoc(Doc):
             
             setattr(self,x,_t)
             
-        setattr(self,'_db',_db)
         
+
         self.__dict__['_modified_childs'] = []
         
         
@@ -170,7 +171,17 @@ class SuperDoc(Doc):
         
         self.__load( self._db, **dictarg(doc) )
         
+        for x in filter( lambda x: type( getattr(self.__class__,x) ) == relation , dir(self.__class__) ):
+            
+            getattr( self, x ).reload()
+        
         return True
+    
+    def __cmp__(self, other):
+        if not hasattr( self, '_id') or not hasattr( other, '_id' ):
+            return -1
+        return cmp( self._id, other._id)
+
 
     def __getitem__(self, k):
         return getattr(self.__dict__['_data'], k)
@@ -197,6 +208,8 @@ class SuperDoc(Doc):
         
     def __setattr__(self, k, v):
         
+        if k in ('_parent_class','_db'):
+            Doc.__setattr__(self, k , v)
         
         if self.__dict__.has_key('_opt') and self.__dict__['_opt'].get('strict') == True:
             if self.__has_entryname( k ) == False:
@@ -239,7 +252,35 @@ class SuperDoc(Doc):
         
         # hapus juga semua anak yg menjadi relasi di dalamnya
         # yang diset sebagai cascade=delete
+        # fitur cascade tidak support many-to-many relation
         self._call_relation_attr('_delete_cascade')
+        
+        # update relation list metadata
+        rels = filter( lambda x: type( getattr( self.__class__, x ) ) == relation, dir(self.__class__) )
+        for rel in rels:
+            
+            vrela = getattr( self.__class__, rel )
+            
+            if vrela._type != 'many-to-many':
+               break
+            
+            keyrel = getattr( vrela, '_keyrel' )
+            
+            if not hasattr(self, keyrel[0]):
+                break
+            
+            backref = getattr( vrela, '_backref' )
+            
+            rela = getattr( vrela, '_get_rel_class' )()
+            mykey = getattr(self.__dict__['_data'],backref[1])
+            
+            all_rela_obj = self._db[rela._collection_name].find({ keyrel[0]: mykey })
+            
+            for rela_obj in all_rela_obj:
+                
+                rela_obj[keyrel[0]].remove(mykey)
+                self._db[rela._collection_name].save(rela_obj)
+                
         
         Doc.delete(self)
     
