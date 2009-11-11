@@ -550,12 +550,12 @@ if __name__ == '__main__':
         suite = unittest.TestLoader().loadTestsFromTestCase(mongo_test)
         unittest.TextTestRunner(verbosity=2).run(suite)
         
-    #main()
-    import cProfile
-    cProfile.run('main()','fooprof')
-    import pstats
-    p = pstats.Stats('fooprof')
-    p.strip_dirs().sort_stats(-1).print_stats()
+    main()
+    #import cProfile
+    #cProfile.run('main()','fooprof')
+    #import pstats
+    #p = pstats.Stats('fooprof')
+    #p.strip_dirs().sort_stats(-1).print_stats()
 
 
     #raise 'test'
