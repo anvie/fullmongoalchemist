@@ -64,9 +64,6 @@ class DocList:
         """Iterator
         """
         
-        try:
-            return self._doctype( self._db, **dictarg(self._items.next()) )
-        except Exception, e:
-            if type(e) != StopIteration:
-                print "ERROR:", e
-            raise StopIteration
+
+        return self._doctype( self._db, **dictarg(self._items.next()) )
+

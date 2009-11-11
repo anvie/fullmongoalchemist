@@ -44,15 +44,20 @@ class ConditionQuery(object):
                             if type(v) == dict:
                                 find_replace( v, key, replacement )
                             elif type(v) == str:
-                                if v == ':%s' % key:
-                                    dict_data[k] = replacement
+                                if v == key:
+                                    if k == '_id':
+                                        return ObjectId(str(replacement))
+                                    dict_data[k] = type(replacement) == ObjectId and str(replacement) or replacement
                                     
-                    find_replace( rv, k, v )
+                        return dict_data
+                    
+                    rv = find_replace( rv, k, v )
+                    if type( rv ) == ObjectId:
+                        return rv
+                    
             else:
                 return None
             
-            
-
         return rv
             
 
@@ -76,9 +81,14 @@ class and_(ConditionQuery):
     @property
     def where_value(self):
         
-        rv = self._cond.items()
+        return parse_query( self._cond )
         
-        return rv and ' && '.join( map(lambda x: 'this.%s == %s' % x, rv) ) or None
+    def where(self,**params):
+        
+        rv = self.apply(**params)
+
+        return rv
+
 
     def __repr__(self):
         return '<and_ ConditionQuery [%s]>' % self.where_value

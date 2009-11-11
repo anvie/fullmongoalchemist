@@ -129,11 +129,9 @@ class relation(object):
 
         else:
             params = dict(map( lambda x: (x, getattr(self._parent_class.__dict__['_data'],x[1:]) ), self.cond.raw.values() ))
-            #params['__metaname__'] = self._parent_class.__dict__['_data']._metaname_
-            
             rv = self.cond.where( **params )
         
-        if rv:
+        if rv and type(rv) == dict:
             rv['_metaname_'] = self._rel_class_name
             
         return rv
@@ -154,7 +152,7 @@ class relation(object):
  
         _cond = self.__get_where_clause()
         
-        #print 'cond: [%s]' % _cond
+        #print 'cond: %s' % _cond
         
         if not _cond:
             return None 
