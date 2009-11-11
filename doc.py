@@ -2,14 +2,13 @@ from pymongo.dbref import DBRef
 from nested import Nested
 from platform import python_version
 from orm import relation, RelationDataType
+from const import *
 
 import types
-import datetime
-import time
+
 
 # define global for optimization purpose (reduce overcall frequently)
 _pyver_lt_260 = map(int, python_version().split('.')) < [2, 6, 0]
-allowed_data_types = [list, str, unicode, int, long, time.struct_time, datetime.datetime, bool]
 
 
 class Doc(object):
@@ -43,6 +42,9 @@ class Doc(object):
     def __setattr__(self, key, value):
         """Convert dicts to Nested object on setting the attribute.
         """
+        
+        if value in reserved_words:
+            return object.__setattr__(self, key, value)
         
         obj_type = type(value)
         
