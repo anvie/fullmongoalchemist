@@ -43,7 +43,7 @@ class Doc(object):
         """Convert dicts to Nested object on setting the attribute.
         """
         
-        if value in reserved_words:
+        if key in reserved_words:
             return object.__setattr__(self, key, value)
         
         obj_type = type(value)

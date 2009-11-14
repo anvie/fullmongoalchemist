@@ -6,8 +6,6 @@ from fma.antypes import *
 
 import datetime
 
-#monga = MongoDB('anvie', '', '', '127.0.0.1', 27017)
-#print 'mongoDB connected: ', monga.connected
 
 class User(SuperDoc):
 
@@ -128,6 +126,16 @@ class TagFlip(SuperDoc):
     _collection_name = 'test'
     
     posts = relation('PostFlip',type='many-to-many',keyrel='_posts:_id',backref='_tags:_id')
+    
+    
+class Item(SuperDoc):
+    
+    _collection_name = 'test'
+    
+class Gadget(Item):
+    
+    _collection_name = 'test.gadget'
+    
     
     
     
@@ -544,7 +552,18 @@ if __name__ == '__main__':
             
             self.assertEqual( monga.col(User).count(name='tester-smart-obj'), 0 )
             
-        
+        def test_submodel(self):
+            
+            monga._db.test.remove({})
+            monga._db.test.gadget.remove({})
+            
+            gadget = monga.col(Gadget).new(name='Sony erricsson')
+            
+            gadget.save()
+            
+            self.assertEqual( gadget.name, 'Sony erricsson' )
+            self.assertEqual( gadget._collection_name, 'test.gadget')
+            
         
     def main():
         suite = unittest.TestLoader().loadTestsFromTestCase(mongo_test)
