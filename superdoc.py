@@ -16,6 +16,16 @@ class SuperDoc(Doc):
     
     def __init__(self, _db=None, **datas):
         
+        
+        #build reserved entry name
+        self.__dict__['_reserved_entry_name'] = []
+        
+        rel_names = filter( lambda x: type( getattr(self.__class__, x) ) == relation, dir(self.__class__) )
+        for reln in rel_names:
+            rel = getattr( self, reln )
+            if rel._type == 'many-to-many':
+                self.__dict__['_reserved_entry_name'].append(rel._keyrel[0])
+        
         self._load( _db, **datas )
         self._echo = False
         
@@ -225,6 +235,11 @@ class SuperDoc(Doc):
     
     def __has_entryname(self, name):
         if name in ('_db','_id','_metaname_','_parent_class','_echo'): return True
+        
+        # periksa apakah meta name, terutama pada relation many-to-many
+        # kembalikan True apabila berupa meta name khusus
+        if name in self.__dict__['_reserved_entry_name']: return True
+        
         return (hasattr(self.__class__, name) and type(getattr(self.__class__, name)) in [relation, types.TypeType]) or hasattr(self.__class__, '_x_%s' % name)
         
         

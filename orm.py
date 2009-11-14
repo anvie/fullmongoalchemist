@@ -363,10 +363,10 @@ class relation(object):
         if key in reserved_words:
             return object.__getattribute__(self, key)
         
+        self.refresh()
+        
         if not hasattr( self.__dict__['_data'], key ):
             return None
-        
-        self.refresh()
         
         return getattr( self.__dict__['_data'], key  )
         
