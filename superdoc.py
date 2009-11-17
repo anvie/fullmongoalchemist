@@ -72,24 +72,42 @@ class SuperDoc(Doc):
 
         setattr(self,'_db',_db)
 
-        for x in filter( lambda x: type(getattr(self.__class__,x)) == relation, dir(self.__class__) ):
+        #@TODO: mungkin butuh optimasi?
+        for x in dir(self.__class__):
             
             if not hasattr( self, x ):
                 continue
             
-            _t = getattr(self,x)
+            o = getattr( self.__class__, x )
+            ot = type( o )
             
-            if type(_t) == types.NoneType:
-                continue
+            if ot == relation:
             
-            _t = _t.copy()
-            _t._parent_class = self
-            
-            setattr(self,x,_t)
-            
-            if _t._type == 'many-to-many':
-                if not hasattr(self, _t._keyrel[0]):
-                    setattr( self, _t._keyrel[0], [] ) # reset m2m relation meta list
+                _t = getattr(self,x)
+                
+                if type(_t) == types.NoneType:
+                    continue
+                
+                _t = _t.copy()
+                _t._parent_class = self
+                
+                setattr(self,x,_t)
+                
+                if _t._type == 'many-to-many':
+                    if not hasattr(self, _t._keyrel[0]):
+                        setattr( self, _t._keyrel[0], [] ) # reset m2m relation meta list
+                        
+            elif ot == types.TypeType:
+                
+                sx = x.startswith('_x_') and x[3:] or x
+                
+                sot = type( getattr( self, sx ) )
+                
+                if o == list and sot != list:
+                    setattr( self.__dict__['_data'], sx, [] )
+                    
+                elif o == dict and sot != dict:
+                    setattr( self.__dict__['_data'], sx, {} )
         
 
         self.__dict__['_modified_childs'] = []
