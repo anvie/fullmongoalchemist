@@ -21,6 +21,7 @@ class SuperDoc(Doc):
         
         #build reserved entry name
         self.__dict__['_reserved_entry_name'] = []
+        self.__dict__['_opt'] = {}
         
         rel_names = filter( lambda x: type( getattr(self.__class__, x) ) == relation, dir(self.__class__) )
         for reln in rel_names:
@@ -31,7 +32,6 @@ class SuperDoc(Doc):
         self._pending_ops = PendingOperation(self)
         self._load( _db, **datas )
         self._echo = False
-        
         
     def _load(self, _db, **datas):
         
@@ -45,7 +45,6 @@ class SuperDoc(Doc):
                 for k in datas.keys():
                     if not self.__has_entryname(k):
                         raise SuperDocError, "`%s` is strict model. Cannot assign entryname for `%s`" % ( self.__class__.__name__,k )
-            
         
         for k, v in datas.iteritems():
             self.__setattr__( k, v )
@@ -59,7 +58,7 @@ class SuperDoc(Doc):
         if _has_opt:
             if not self._saved() and self._opt.has_key('default'):
                 for k, v in self._opt['default'].iteritems():
-                    if hasattr(self,k):
+                    if getattr( self, k ) == None:
                         if getattr(self.__dict__['_data'], k) is None:
                             if type( v ) in [types.FunctionType, types.BuiltinFunctionType]:
                                 setattr( self.__dict__['_data'], k, apply( v ) )
@@ -75,11 +74,14 @@ class SuperDoc(Doc):
         #@TODO: mungkin butuh optimasi?
         for x in dir(self.__class__):
             
-            if not hasattr( self, x ):
-                continue
-            
             o = getattr( self.__class__, x )
             ot = type( o )
+            
+            if ot == property or ot not in (relation, types.TypeType, dict):
+                continue
+            
+            if getattr( self, x ) == None:
+                continue
             
             if ot == relation:
             
@@ -94,11 +96,12 @@ class SuperDoc(Doc):
                 setattr(self,x,_t)
                 
                 if _t._type == 'many-to-many':
-                    if not hasattr(self, _t._keyrel[0]):
+                    if not self._hasattr( _t._keyrel[0] ):
                         setattr( self, _t._keyrel[0], [] ) # reset m2m relation meta list
                         
             elif ot == types.TypeType:
                 
+                # khusus buat inisialisasi empty list, default is []
                 sx = x.startswith('_x_') and x[3:] or x
                 
                 sot = type( getattr( self, sx ) )
@@ -106,8 +109,8 @@ class SuperDoc(Doc):
                 if o == list and sot != list:
                     setattr( self.__dict__['_data'], sx, [] )
                     
-                elif o == dict and sot != dict:
-                    setattr( self.__dict__['_data'], sx, {} )
+                elif o == dict and sot != Nested:
+                    setattr( self.__dict__['_data'], sx, Nested() )
         
 
         self.__dict__['_modified_childs'] = []
@@ -135,15 +138,17 @@ class SuperDoc(Doc):
 
                     y = x[3:]
             
-            if not hasattr(self.__dict__['_data'],y):
-                setattr(self.__dict__['_data'],y,None)
+            if getattr( self.__dict__['_data'], y ) is None:
+                # re-set it with None again!
+                setattr( self.__dict__['_data'], y, None )
             
     def validate(self):
         
-        if hasattr(self, 'req'):
-            for x in self.req:
+        req = self.__dict__['_opt'].get('req')
+        if req is not None:
+            for x in req:
                 
-                if hasattr(self,x):
+                if getattr( self, x ):
                     if getattr(self,x) is None:
                         raise SuperDocError, "%s require value for %s" % (self.__class__.__name__,x)
                 else:
@@ -181,22 +186,12 @@ class SuperDoc(Doc):
         self.__map_relation()
         
 
-    #def _set_relation_attr(self, attr, val):
-    #
-    #    for x in filter( lambda x: type(getattr(self.__class__,x)) == relation, dir(self.__class__) ):
-    #        
-    #        t = getattr(self,x)
-    #        
-    #        setattr(t.__class__, attr, val)
-    #        
-    #        #setattr(self.__class__, x, t)
-
 
     def _call_relation_attr(self, attr, *args, **kwargs):
 
         for x in filter( lambda x: type(getattr(self.__class__,x)) == relation, dir(self.__class__) ):
             
-            t = getattr(self,x)
+            t = getattr( self, x )
             
             if hasattr(t, attr):
             
@@ -207,7 +202,7 @@ class SuperDoc(Doc):
         '''Reload data from database, for keep data up-to-date
         '''
         
-        if not hasattr(self, '_id') or self._id is None:
+        if self._id is None:
             raise SuperDocError, "Cannot refresh data from db, may unsaved document?"
         
         doc = self._db[self._collection_name].find_one(self._id)
@@ -245,7 +240,7 @@ class SuperDoc(Doc):
     def __cmp__(self, other):
         if other is None:
             return -1
-        if not hasattr( self, '_id') or not hasattr( other, '_id' ):
+        if self.__dict__['_data']._id is None or other.__dict__['_data']._id is None:
             return -1
         return cmp( self._id, other._id)
 
@@ -255,14 +250,16 @@ class SuperDoc(Doc):
         
     
     def __getattr__(self, k):
-        
-        if hasattr(self.__dict__['_data'], k):
             
-            v = getattr(self.__dict__['_data'], k)
+        v = getattr(self.__dict__['_data'], k)
+        
+        if v != None:
             
             if ( type( v ) == relation ):
                 return getattr( v, k )
-                
+        
+        if not k.startswith('__') and k in dir(self.__dict__['_data']):
+            return v
             
         return Doc.__getattr__(self, k)
     
@@ -302,10 +299,11 @@ class SuperDoc(Doc):
             r = getattr(self.__class__, k)
             
             if r._pk[0] == '_id':
-                if not hasattr( v, '_id' ):
+                if v._id == None:
                     # may unsaved doc, save it first
                     v.save()
-            elif not hasattr( v, r._pk[0] ):
+                    
+            elif not v._hasattr(r._pk[0]):
                 raise RelationError, "relation model `%s` don't have keyname `%s`" % (v.__class__.__name__, r._pk[0])
             
             fkey = getattr( v, r._pk[0] )
@@ -327,7 +325,7 @@ class SuperDoc(Doc):
 
     
     def _saved(self):
-        return hasattr(self.__dict__['_data'],'_id') and self._id is not None
+        return getattr(self.__dict__['_data'],'_id') is not None
         
     
     def _changed(self):
@@ -352,7 +350,7 @@ class SuperDoc(Doc):
             
             keyrel = getattr( vrela, '_keyrel' )
             
-            if not hasattr(self, keyrel[0]):
+            if getattr(self, keyrel[0]) is None:
                 break
             
             backref = getattr( vrela, '_backref' )

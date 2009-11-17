@@ -1016,7 +1016,7 @@ if __name__ == '__main__':
         
         def setUp(self):
             self.monga = monga
-            monga.col(PostMany).query().remove()
+            monga._db.test.remove({})
             
         def test_chain_effects(self):
             
@@ -1385,6 +1385,30 @@ if __name__ == '__main__':
             
             # test pencarian di SuperDocList
             self.assertEqual( pa.childs.find(name='c3'), pa.childs[2] )
+            
+        def test_list_dict(self):
+            
+            monga._db.test.remove({})
+            
+            u = monga.col(User).new(name='anvie-keren')
+            u.settings.test = 'is'
+            u.save()
+            
+            del u
+            
+            u = monga.col(User).find_one(name='anvie-keren')
+            
+            self.assertEqual( u.name, 'anvie-keren' )
+            self.assertEqual( u.settings.test, 'is')
+            
+            u.settings.oi = 'yeah'
+            u.save()
+            
+            del u
+            
+            u = monga.col(User).find_one(name='anvie-keren')
+            
+            self.assertEqual( u.settings.oi, 'yeah' )
 
         
     def main():
@@ -1392,7 +1416,7 @@ if __name__ == '__main__':
         unittest.TextTestRunner(verbosity=2).run(suite)
         
         # clean up
-        monga._db.test.remove({})
+        #monga._db.test.remove({})
         
     main()
     #import cProfile

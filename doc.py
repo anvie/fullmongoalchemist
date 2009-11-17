@@ -27,7 +27,7 @@ class Doc(object):
         """Return value from data attribute.
         """
         
-        if hasattr(self.__dict__['_data'], key):
+        if getattr(self.__dict__['_data'], key) is not None:
             
             obj = getattr(self.__dict__['_data'], key)
             
@@ -71,8 +71,10 @@ class Doc(object):
         
         dict = self.__to_dict(self.__dict__['_data'])
 
-        if hasattr(self.__dict__['_data'], '_id'):
-            dict['_id'] = getattr(self.__dict__['_data'], '_id')
+        d_id = getattr(self.__dict__['_data'], '_id')
+        
+        if d_id is not None:
+            dict['_id'] = d_id
 
         return dict
     
@@ -89,7 +91,7 @@ class Doc(object):
             value = getattr(obj, k)
             obj_type = type(value)
             
-            # preocess Nested objects
+            # process Nested objects
             if obj_type == Nested:
                 d[k] = self.__to_dict(value)
             # items
@@ -103,7 +105,7 @@ class Doc(object):
                     if type(i) == Nested:
                         d[k].append(self.__to_dict(i))
                     elif type(i) == Doc:
-                        if not hasattr(i,'_id'):
+                        if getattr(i,'_id') is None:
                             # may unsaved object?? try to save it first
                             i.save()
                         
@@ -145,7 +147,7 @@ class Doc(object):
         """Remove document from collection if a document id exists.
         """
         
-        if hasattr(self.__dict__['_data'], '_id'):
+        if getattr(self.__dict__['_data'], '_id') is not None:
             rv = self._db[self._collection_name].remove(
                 {'_id': self.__dict__['_data']['_id']}
             )
@@ -156,7 +158,7 @@ class Doc(object):
         """String representation of a document.
         """
         
-        if not hasattr(self.__dict__['_data'], '_id'):
+        if getattr(self.__dict__['_data'], '_id') is None:
             return 'Doc(id=<not_saved>)'
             
         

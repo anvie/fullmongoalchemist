@@ -25,3 +25,14 @@ class Nested(object):
     def __getitem__(self, k):
         return getattr(self, k)
         
+    def __getattr__(self, k):
+        rv = None
+        try:
+            rv = object.__getattribute__(self, k)
+        except:
+            pass
+        return rv
+    
+    def _hasattr(self, k):
+        return k.startswith('__') == False and k in dir(self)
+    

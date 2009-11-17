@@ -94,7 +94,7 @@ class relation(object):
     def __repr__(self):
         self.refresh()
         if self.listmode:
-            item_count = self.__dict__['_data'].count()
+            item_count = self.__dict__['_data'] is not None and self.__dict__['_data'].count() or 0
             if item_count>10:
                 return "%s ...(and %d more)..." % ( str( self.__dict__['_cached_repr'][:10] ), item_count - 10 )
             return repr( self.__dict__['_cached_repr'] )
@@ -109,7 +109,7 @@ class relation(object):
 
     def refresh(self):
 
-        if self.changed:
+        if self.changed is True:
             #print 'data changed, (re)populate list...'
             self.reload()
             
@@ -130,7 +130,12 @@ class relation(object):
         
         if self._type == 'many-to-many':
             
-            rv = { self._keyrel[1] : {'$in' : getattr(self._parent_class.__dict__['_data'], self._keyrel[0])} }
+            d = getattr(self._parent_class.__dict__['_data'], self._keyrel[0])
+            
+            if d is None:
+                return d
+            
+            rv = { self._keyrel[1] : {'$in' : d } }
 
         else:
             rv = self._cond.where( **dict(map( lambda x: (x, hasattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) and getattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) or None ), self._cond.raw.values() )))
@@ -213,7 +218,7 @@ class relation(object):
             raise RelationError, "data not related: %s <=> %s" % (self._rel_class_name,type(data))
             
             
-        if self._type in ('on-to-many','on-to-one') and self._pk[1] != '_id' and not hasattr(self._parent_class.__dict__['_data'], self._pk[1]):
+        if self._type in ('on-to-many','on-to-one') and self._pk[1] != '_id' and not self._parent_class.__dict__['_data']._hasattr(self._pk[1]):
             raise RelationError, "%s has no attribute %s" % (self._parent_class.__class__.__name__, self._pk[1])
             
 
@@ -294,12 +299,12 @@ class relation(object):
                     
                 elif self._type == 'many-to-many':
                     
-                    if not hasattr( self._parent_class.__dict__['_data'], self._keyrel[0] ):
+                    if not self._parent_class.__dict__['_data']._hasattr(self._keyrel[0]):
                         setattr( self._parent_class.__dict__['_data'], self._keyrel[0], [] )
                     
                     rc = self._get_rel_class()
                     
-                    if not hasattr( data.__dict__['_data'], self._keyrel[1] ):
+                    if not data.__dict__['_data']._hasattr(self._keyrel[1]):
                         raise RelationError, "many-to-many relation `%s` empty keyrel for `%s`" % (data.__class__.__name__,self._keyrel[1])
                     
                     key = getattr( data.__dict__['_data'], self._keyrel[1] )
@@ -308,7 +313,7 @@ class relation(object):
                     if key not in getattr( self._parent_class.__dict__['_data'], self._keyrel[0] ):
                         getattr( self._parent_class.__dict__['_data'], self._keyrel[0] ).append( key  )
                     
-                    if not hasattr( data.__dict__['_data'], self._backref[0] ):
+                    if not data.__dict__['_data']._hasattr( self._backref[0] ):
                         setattr( data.__dict__['_data'], self._backref[0], [] )
                      
                     key = getattr( self._parent_class.__dict__['_data'], self._backref[1] )
