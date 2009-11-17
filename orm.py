@@ -2,9 +2,9 @@ import logging
 
 from antypes import *
 from exc import RelationError
-from doclist import DocList
+from doclist import DocList, SuperDocList
 from pymongo.objectid import ObjectId
-from const import reserved_words
+from const import relation_reserved_words
 
 import random
 import copy
@@ -29,8 +29,17 @@ class relation(object):
         self._current_hash = 0
         self._rel_class_name = rel_class
         
-        self.listmode = kwargs.get('listmode', True)
-        self._type = kwargs.get('type', self.listmode and 'one-to-many' or 'one-to-one')
+        self._type = kwargs.get('type')
+        
+        if self._type is None:
+            self.listmode = kwargs.get('listmode')
+            if self.listmode is None:
+                self._type = 'one-to-many'
+                self.listmode = True
+            else:
+                self._type = self.listmode == True and 'one-to-many' or 'one-to-one'
+        else:
+            self.listmode = self._type != 'one-to-one'
 
         if self._type == 'many-to-many':
             
@@ -48,6 +57,10 @@ class relation(object):
             
             self._backref = self._backref.split(':')
             self._keyrel = self._keyrel.split(':')
+            
+        elif self._type == 'dynamic':
+            
+            pass
 
         else:
             
@@ -80,7 +93,12 @@ class relation(object):
 
     def __repr__(self):
         self.refresh()
-        return repr( self.listmode and self.__dict__['_cached_repr'] or self.__dict__['_data'] )
+        if self.listmode:
+            item_count = self.__dict__['_data'].count()
+            if item_count>10:
+                return "%s ...(and %d more)..." % ( str( self.__dict__['_cached_repr'][:10] ), item_count - 10 )
+            return repr( self.__dict__['_cached_repr'] )
+        return repr( self.__dict__['_data'] )
         
     @property
     def changed(self):
@@ -96,7 +114,7 @@ class relation(object):
             self.reload()
             
         if self.listmode:
-            if type(self.__dict__['_data']) == RelationIterableProxy :
+            if type(self.__dict__['_data']) == SuperDocList :
                 self.__dict__['_data'].tofirst()
 
     def count(self):
@@ -104,7 +122,7 @@ class relation(object):
         self.refresh()
         
         if self.listmode:
-            return len(self.__dict__['_cached_repr'])
+            return self.__dict__['_data'].count()
         return None
         
         
@@ -115,7 +133,7 @@ class relation(object):
             rv = { self._keyrel[1] : {'$in' : getattr(self._parent_class.__dict__['_data'], self._keyrel[0])} }
 
         else:
-            rv = self._cond.where( **dict(map( lambda x: (x, getattr(self._parent_class.__dict__['_data'],x[1:]) ), self._cond.raw.values() )) )
+            rv = self._cond.where( **dict(map( lambda x: (x, hasattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) and getattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) or None ), self._cond.raw.values() )))
         
         if rv and type(rv) == dict:
             rv['_metaname_'] = self._rel_class_name
@@ -124,6 +142,11 @@ class relation(object):
         
 
     def reload(self):
+        '''Load data dari db.
+        the rule is... masupin dulu ke cache, cache dialokasikan sebesar
+        jumlah item di dalamnya dan di-null-kan, tetapi baru di isi dengan max 10 item dulu,
+        yg lainnya nyusul bergantung permintaan dari user.
+        '''
         
         if not hasattr( self, '_parent_class' ): return None
         
@@ -145,14 +168,19 @@ class relation(object):
         if self.listmode:
             
 
-            self.__dict__['_data'] = RelationIterableProxy (
+            self.__dict__['_data'] = SuperDocList (
                             DocList( self._parent_class._db,
                                     rel_class,
                                     self._parent_class._db[rel_class._collection_name].find( _cond )
                                     )
                                          )
             
-            self.__dict__['_cached_repr'] = self.__dict__['_data'].sort(_id=1).all()
+            # alokasikan null memory sebesar jumlah item pada db
+            cached_data = self.__dict__['_data'].sort(_id=1).limit(10).all() # maximum to 10...
+            if self.__dict__['_data'].count() > 10:
+                cached_data += [ None for x in xrange(0,self.__dict__['_data'].count() - 10) ]
+            
+            self.__dict__['_cached_repr'] = cached_data
             self.__dict__['_data'] = self.__dict__['_data'].tofirst()
             
             return self.__dict__['_data']
@@ -340,12 +368,25 @@ class relation(object):
             
 
     def __getitem__(self, k):
-        
+        '''Mendapatkan item secara subscript,
+        diambil dari cache dulu, kalo gak ada baru ambil dari db
+        '''
         self.refresh()
         
         if self.listmode:
             if len(self.__dict__)>0:
-                return self.__dict__['_cached_repr'][k]
+                if len(self.__dict__['_cached_repr']) > k and self.__dict__['_cached_repr'][k] is not None:
+                    return self.__dict__['_cached_repr'][k]
+                    
+                elif len(self.__dict__['_new_data']) > k:
+                    return self.__dict__['_new_data'][k]
+                    
+                rv = self.__dict__['_data'].skip(k).limit(1).first()
+                if rv is not None:
+                    # simpan di cache pada point ke k
+                    self.__dict__['_cached_repr'][k] = rv
+                    return rv
+                raise IndexError, "Index out of range"
             else:
                 raise RelationError, "No data with key %s" % k
         return self.__dict__['_data']
@@ -357,10 +398,13 @@ class relation(object):
             return len(self.__dict__['_cached_repr'])
         return 0
         
+    def __nonzero__(self):
+        self.refresh()
+        return (self.__dict__['_cached_repr'] or self.__dict__['_data']) is not None
         
     def __getattr__(self, key):
         
-        if key in reserved_words:
+        if key in relation_reserved_words:
             return object.__getattribute__(self, key)
         
         self.refresh()
@@ -388,39 +432,6 @@ class relation(object):
         '''
         self._parent_class.__dict__['_modified_childs'].append(info)
         
-        
-
-class RelationIterableProxy(object):
-    
-    
-    def __init__(self, doclist):
-        
-        self._doclist = doclist
-        
-    def skip(self, num):
-        return RelationIterableProxy( self._doclist.skip(num) )
-    
-    def limit(self, num):
-        return RelationIterableProxy( self._doclist.limit(num) )
-        
-    def sort(self, **kwargs):
-        return RelationIterableProxy( self._doclist.sort(**kwargs) )
-        
-    def tofirst(self):
-        return RelationIterableProxy( self._doclist.rewind() )
-        
-    def all(self):
-        return [ x for x in self._doclist ]
-        
-    def __iter__(self):
-        return self
-        
-    def next(self):
-        return self._doclist.next()
-        
-    def copy(self):
-        return copy.copy( self )
-        
 
 
 class RelationDataType(object):
@@ -440,3 +451,9 @@ def mapper(*objs):
     global mapped_user_class_docs
     
     mapped_user_class_docs.update( dict(map(lambda x: (x.__name__, x), objs )) )
+    
+def clear_mapper():
+    
+    global mapped_user_class_docs
+    mapped_user_class_docs.clear()
+

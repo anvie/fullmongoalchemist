@@ -3,6 +3,7 @@
 from pymongo import Connection
 from collection import Collection
 from exc import ConnectionError
+from utils import dump_config
 
 class MongoDB(object):
     '''Interface adapter buat interaksi dengan Mongo DB
@@ -49,3 +50,10 @@ class MongoDB(object):
         
         self._db = self._cn[db_name]
         
+        
+    
+def monga_from_config( config, prefix ):
+    
+    return MongoDB( **dump_config( config, prefix) )
+    
+    

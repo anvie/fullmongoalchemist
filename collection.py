@@ -1,7 +1,7 @@
 from pymongo.dbref import DBRef
 from pymongo.objectid import ObjectId
 from superdoc import SuperDoc
-from doclist import DocList
+from doclist import DocList, SuperDocList
 from exc import SuperDocError
 
 import types
@@ -38,12 +38,9 @@ class Collection:
         """Return empty document, with preset collection.
         """
         
-        #if type(data) == types.DictType:
-        #    return self._doctype( self._db, data )
-        
         return self._doctype( self._db, **datas )
-            
-            
+
+
     def _parse_query(self, kwargs):
         """Parse argument list into mongo query. 
         
@@ -112,14 +109,29 @@ class Collection:
             # simple value assignment
             else:
                 q[k] = v
-            
+
         # append operator dict to mongo update dict
         for k, v in op_list.items():
+            et = {}
             for i in v:
-                q['$' + k] = {i[0]: i[1]}
+                et[i[0]] = i[1]
                 
+            q['$' + k] = et
+        
         return q
     
+    def _parse_option(self, kwargs):
+        
+        q = {}
+
+        for k, v in kwargs.items():
+        
+            op = k.split("__")[-1]
+            if op in ('upsert',):
+                k = "$%s" % op
+                q[k] = v
+                
+        return q
 
     def query(self, **kwargs):
         """This method is used to first say which documents should be
@@ -140,10 +152,11 @@ class Collection:
             def remove(self):
                 self._db[self._doctype._collection_name].remove(self.__query)
                 
-            def update(self, **kwargs):
+            def update(self, update, options):
                 self._db[self._doctype._collection_name].update(
                     self.__query, 
-                    self._parse_update(kwargs)
+                    self._parse_update(update),
+                    **options
                 )
                 
         # hanya hapus pada record yg memiliki model yg tepat
@@ -174,9 +187,12 @@ class Collection:
         # dalam satu koleksi yg sama
         kwargs['_metaname_'] = self._doctype.__name__
         
-        return DocList(
-            self._db, self._doctype, 
-            self._db[self._doctype._collection_name].find(self._parse_query(kwargs))
+        return SuperDocList(
+            DocList(
+                self._db,
+                self._doctype, 
+                self._db[self._doctype._collection_name].find(self._parse_query(kwargs))
+            )
         )
         
     # thanks to andrew trusty
@@ -187,7 +203,6 @@ class Collection:
 
         if '_id' in kwargs:
             _cond = ObjectId(str(kwargs['_id']))
-            #args = {'_id':id,'_metaname_':self._doctype.__name__}
         else:
             kwargs['_metaname_'] = self._doctype.__name__
             _cond = self._parse_query(kwargs)
@@ -205,5 +220,23 @@ class Collection:
         '''
         return self.find( **kwargs ).count()
         
-        
 
+#@TODO: finish this code bellow
+
+#class SuperCollection(Collection):
+#    
+#    def __self__(self, db, doctype, prefilter):
+#        Collection.__init__(self, db, doctype)
+#        self._filter = prefilter
+#        
+#    def new(self):
+#        raise SuperDocError, "Filtered collection not support new method"
+#    
+#    def _parse_query(self, kwargs):
+#        rv = Collection._parse_query( self, kwargs )
+#        for k, v in self._filter:
+#            rv[k] = v
+#        return rv
+#    
+
+    

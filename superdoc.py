@@ -1,11 +1,13 @@
 #@TODO: finish this code
-from doc import Doc, reserved_words
+from doc import Doc
 from pymongo.dbref import DBRef
 from pymongo.objectid import ObjectId
 from nested import Nested
 from antypes import *
 from exc import *
 from orm import *
+from const import superdoc_reserved_words
+from pendingop import PendingOperation
 
 import types
 
@@ -26,6 +28,7 @@ class SuperDoc(Doc):
             if rel._type == 'many-to-many':
                 self.__dict__['_reserved_entry_name'].append(rel._keyrel[0])
         
+        self._pending_ops = PendingOperation(self)
         self._load( _db, **datas )
         self._echo = False
         
@@ -69,9 +72,17 @@ class SuperDoc(Doc):
 
         setattr(self,'_db',_db)
 
-        for x in filter( lambda x: type(getattr(self,x)) == relation, dir(self) ):
+        for x in filter( lambda x: type(getattr(self.__class__,x)) == relation, dir(self.__class__) ):
             
-            _t = getattr(self,x).copy()
+            if not hasattr( self, x ):
+                continue
+            
+            _t = getattr(self,x)
+            
+            if type(_t) == types.NoneType:
+                continue
+            
+            _t = _t.copy()
             _t._parent_class = self
             
             setattr(self,x,_t)
@@ -144,6 +155,10 @@ class SuperDoc(Doc):
         else:
             raise SuperDocError, "Recursion limit reached, max %d" % MAX_RECURSION_DEEP
         
+        # eksekusi pending ops
+        if not self._pending_ops.empty():
+            self._pending_ops.apply_op_all()
+        
         # refresh relation state
         self.__map_relation()
         
@@ -196,7 +211,6 @@ class SuperDoc(Doc):
             
             rel = getattr( self, x )
             if rel is not None:
-                rel._parent_class = self # don't know it is necessary??
                 rv = rel.reload()
                 if rel._type == 'one-to-one':
                     if type(rv) == types.NoneType:
@@ -211,6 +225,8 @@ class SuperDoc(Doc):
     
     
     def __cmp__(self, other):
+        if other is None:
+            return -1
         if not hasattr( self, '_id') or not hasattr( other, '_id' ):
             return -1
         return cmp( self._id, other._id)
@@ -234,7 +250,7 @@ class SuperDoc(Doc):
     
     
     def __has_entryname(self, name):
-        if name in ('_db','_id','_metaname_','_parent_class','_echo'): return True
+        if name in superdoc_reserved_words: return True
         
         # periksa apakah meta name, terutama pada relation many-to-many
         # kembalikan True apabila berupa meta name khusus
@@ -245,7 +261,7 @@ class SuperDoc(Doc):
         
     def __setattr__(self, k, v):
         
-        if k in reserved_words:
+        if k in superdoc_reserved_words or k.startswith('_x_'):
             return Doc.__setattr__(self, k , v)
         
         if self.__dict__.has_key('_opt') and self.__dict__['_opt'].get('strict') == True:
@@ -266,13 +282,29 @@ class SuperDoc(Doc):
         # just map it to pk==fk
         if hasattr(self.__class__,k) and type( getattr(self.__class__,k) ) == relation and isinstance(v,SuperDoc):
             r = getattr(self.__class__, k)
+            
+            if r._pk[0] == '_id':
+                if not hasattr( v, '_id' ):
+                    # may unsaved doc, save it first
+                    v.save()
+            elif not hasattr( v, r._pk[0] ):
+                raise RelationError, "relation model `%s` don't have keyname `%s`" % (v.__class__.__name__, r._pk[0])
+            
             fkey = getattr( v, r._pk[0] )
-            setattr( self.__dict__['_data'], r._pk[1], type(fkey) == ObjectId and str(fkey) or fkey )
+            if fkey is not None:
+                setattr( self.__dict__['_data'], r._pk[1], type(fkey) == ObjectId and str(fkey) or fkey )
+            else:
+                # relasi terbalik berarti masukin ke pending ops ajah...
+                fkey = getattr( self.__dict__['_data'], r._pk[1] )
+                self._pending_ops.add_op( v, 'setattr', key=r._pk[0], value=fkey )
+                self._pending_ops.add_op( v, 'save' )
+                
         else:
             Doc.__setattr__(self, k , v)
 
 
     def __delitem__(self, k):
+        print 'test'
         delattr(self.__dict__['_data'], k)
 
     

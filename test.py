@@ -6,80 +6,8 @@ from fma.antypes import *
 
 import datetime
 
+datetime_type = datetime.datetime
 
-class User(SuperDoc):
-
-    _collection_name = 'test'
-    
-    user_id = int
-    name = unicode
-    pic_avatar = unicode
-    profile_link = unicode
-    _creation_time = datetime.datetime
-    
-    wallposts = relation('WallPost',pk='wuid==user_id',cond=or_(wuid=':user_id',ruid=':user_id'),listmode=True,cascade="delete")
-    friends = relation('User',type='many-to-many',keyrel='_friends:_id',backref='_friends:_id')
-    
-    _opt = {
-        'req' : ['user_id','name'],
-        'default' : dict(name='', _creation_time=datetime.datetime.utcnow)
-    }
-    
-    @property
-    def creation_time(self):
-        return self._creation_time and self._creation_time.strftime("%a, %d/%m/%Y %H:%M:%S %p") or 'unknown'
-    
-    
-class WallPost(SuperDoc):
-
-    _collection_name = 'test'
-    
-    wuid = int
-    ruid = int
-    
-    message = unicode
-    via = unicode
-    _creation_time = datetime.datetime
-    
-    writter = relation('User',pk='user_id==wuid',listmode=False)
-    receiver = relation('User',pk='user_id==ruid',listmode=False)
-    comments = relation('WallPostComment',pk='puid==_id', cascade='delete')
-    
-    
-    _opt = {
-        'req' : ['wuid','ruid','message','via'],
-        'default' : dict(_creation_time=datetime.datetime.utcnow),
-        'strict' : True
-    }
-    
-    @property
-    def creation_time(self):
-        return self._creation_time and self._creation_time.strftime("%a, %d/%m/%Y %H:%M:%S %p") or 'unknown'
-
-
-class WallPostComment(SuperDoc):
-    
-    _collection_name = 'test'
-    
-    puid = unicode
-    wuid = int
-    
-    message = unicode
-    _creation_time = datetime.datetime
-    
-    post = relation('WallPost',pk='_id==puid',listmode=False)
-    writter = relation('User',pk='user_id==wuid',listmode=False)
-    
-    
-    _opt = {
-        'req' : ['puid','wuid','message'],
-        'default' : dict(_creation_time=datetime.datetime.utcnow),
-        'strict' : True
-    }
-    
-    @property
-    def creation_time(self):
-        return self._creation_time and self._creation_time.strftime("%a, %d/%m/%Y %H:%M:%S %p") or 'unknown'
     
 
 class PostMany(SuperDoc):
@@ -128,18 +56,950 @@ class TagFlip(SuperDoc):
     posts = relation('PostFlip',type='many-to-many',keyrel='_posts:_id',backref='_tags:_id')
     
     
-class Item(SuperDoc):
+
+class User(SuperDoc):
+
+    _collection_name = 'test'
+    
+    #''' User authority definition
+    #1=admin, 2=operator, 3=inspector, 4=corporate user, 5=delivery operator, 6=registered, 7 = guest
+    #'''
+    USER_POS_ADMIN = 1
+    USER_POS_OPERATOR = 2
+    USER_POS_INSPECTOR = 3
+    USER_POS_CORPORATE = 4
+    USER_POS_DELIVER_OPERATOR = 5
+    USER_POS_REGISTERED = 6
+    USER_POS_GUEST = 7
+    
+    name = unicode
+    first_name = unicode
+    last_name = unicode
+    email = unicode
+    birth_date = datetime_type
+    pic_avatar = unicode
+    lang_id = unicode
+    contact = dict
+    settings = dict
+    
+    _creation_time = datetime_type
+    _authority = int
+    _pass_hash = unicode
+    _last_activity = datetime_type
+    _last_login_time = datetime_type
+    _reputation_level = int
+    _warning_level = int
+    _advertiser = bool
+    _banned = bool
+    _banned_type = int # 1 = permanent, 2 = with expiration
+    _banned_expiration_time = datetime_type
+    _hash = int
+    
+    wallposts = relation('WallPost',pk='wuid==_id',cond=or_(wuid=':_id',ruid=':_id'),listmode=True,cascade="delete")
+    friends = relation('User',type='many-to-many',keyrel='_friends:_id',backref='_friends:_id')
+    market = relation('Market',pk='owner_user_id==_id',type='one-to-one',cascade='delete')
+    bids = relation('Item',pk='bidder_id==_id',cond=and_(item_class='Bid'))
+    warnings = relation('Item',pk='user_id==_id',cond=and_(item_class='UserWarning'),cascade='delete')
+    messages = relation('Message',pk='to_user_id==_id')
+    sent_messages = relation('Message',pk='from_user_id==_id')
+    
+    
+    _opt = {
+        'req' : ['name'],
+        'default' : dict(name='', _creation_time=datetime.datetime.utcnow),
+        'strict' : True
+    }
+    
+    @property
+    def creation_time(self):
+        return self._creation_time and self._creation_time.strftime("%a, %d/%m/%Y %H:%M:%S %p") or 'unknown'
+        
+    @property
+    def join_time(self):
+        return self.creation_time
+    
+    def get_token(self):
+       import hashlib
+       utoken = hashlib.sha1('%s-x-%s-%s' % (self._id, self.name, str(self._creation_time))).hexdigest()
+       return utoken
+
+    @property
+    def have_market(self):
+        return self.market and True or False
+
+    @property
+    def full_name(self):
+        '''Get formated user name
+        '''
+        rv = self.first_name
+        if self.last_name:
+            rv = '%s %s' % (rv, self.last_name)
+        return rv
+
+    @property
+    def last_login_time(self):
+        '''Formated date for user last login, use _last_login instead for get raw data
+        '''
+        if self._last_login_time:
+            return self._last_login_time.strftime('%a, %d/%m/%Y %H:%M:%S')
+        return None
+
+    @property
+    def profile_link(self):
+        '''Mendapatkan alamat link profile dari pengguna
+        contoh: http://ansvia.com/user
+        '''
+        return "/%s" % self.name
+
+    @property
+    def avatar_image_link(self):
+        '''Mendapatkan alamat gambar avatar
+        '''
+        pass
+        
+    @property
+    def have_avatar(self):
+        return self.pic_avatar and True or False
+
+    @property
+    def join_date(self):
+        '''Mendapatkan waktu join terformat
+        Gunakan _join_time untuk akses secara langsung
+        '''
+        return self._creation_time.strftime("%d/%m/%Y")
+
+    @property
+    def hash(self):
+        '''Get hash for caching perform
+        '''
+        return self._hash
+
+    @property
+    def authority(self):
+        return self._authority
+
+    @property
+    def authority_name(self):
+        return {
+            self.USER_POS_ADMIN: "Admin",
+            self.USER_POS_OPERATOR: "Operator",
+            self.USER_POS_INSPECTOR: "Inspector",
+            self.USER_POS_CORPORATE: "Corporate user",
+            self.USER_POS_DELIVER_OPERATOR: "Delivery operator",
+            self.USER_POS_REGISTERED: "Registered user",
+            self.USER_POS_GUEST: "Guest"
+        }.get(self._authority, (lambda: "Unknown"))()
+
+    @property
+    def banned(self):
+        return (self._banned and (datetime.datetime.now() < self._banned_expiration_time)) and True or False
+
+    @property
+    def banned_type(self):
+        return self._banned_type
+
+    @property
+    def banned_expiration_time(self):
+        '''Mendapatkan waktu kadaluarsa terformat user yang dibanned
+        '''
+        return self._banned_expiration_time and self._banned_expiration_time.strftime("%a, %d/%m/%Y %H:%M:%S") or 'unknown'
+
+    @property
+    def reputation_level(self):
+        return self._reputation_level
+
+    @property
+    def warning_level(self):
+        return self._warning_level
+    
+
+class WallPost(SuperDoc):
+
+    _collection_name = 'test'
+    
+    wuid = unicode
+    ruid = unicode
+    
+    message = unicode
+    via = unicode
+    _creation_time = datetime.datetime
+    
+    writter = relation('User',pk='_id==wuid', listmode=False)
+    receiver = relation('User',pk='_id==ruid', listmode=False)
+    comments = relation('Comment',pk='itemid==_id', cascade='delete')
+    
+    _opt = {
+        'req' : ['wuid','ruid','message','via'],
+        'default' : dict(_creation_time=datetime.datetime.utcnow),
+        'strict' : True
+    }
+    
+    @property
+    def creation_time(self):
+        return self._creation_time and self._creation_time.strftime("%a, %d/%m/%Y %H:%M:%S %p") or 'unknown'
+   
+    @property
+    def formatted_message(self):
+        return self.message
+        
+class Message(SuperDoc):
     
     _collection_name = 'test'
     
-class Gadget(Item):
+    to_user_id = unicode
+    from_user_id = unicode
+    subject = unicode
+    content = unicode
     
-    _collection_name = 'test.gadget'
+    _readed = bool
+    _replied = bool
+    _deleted = bool
+    _deleted_time = datetime_type
+    _allow_html = bool
+
+    owner = relation('User', pk='_id==to_user_id', listmode=False)
+    sender =  relation('User', pk='_id==from_user_id', listmode=False)
+
+    @property
+    def readed(self):
+        return self._readed
+
+    @property
+    def replied(self):
+        return self._replied
+
+    @property
+    def deleted(self):
+        return self._deleted
+
     
+class ChatMessage(SuperDoc):
     
+    _collection_name = 'test'
     
+    chat_msg_id = long
+    from_user_id = long
+    to_user_id = long
+    message = unicode
+    received = bool
+    sent = datetime.datetime
     
-mapper(User, WallPost, WallPostComment, PostMany, Tags, PostFlip, TagFlip)
+    _opt = {
+        'req' : ['chatdata_id','message'],
+        'default' : {'sent':datetime.datetime.now},
+        'strict' : True
+    }
+    
+class UserNotification(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    TYPE_GENERAL = 0
+    TYPE_COMMENT = 1
+    TYPE_BID = 2
+    TYPE_TESTIMONIAL = 3
+    TYPE_WARNING = 4
+    TYPE_ERROR = 5
+    TYPE_PRODUCT_ITEM_UPDATED = 6
+
+    user_id = unicode
+    subject = unicode
+    message = unicode
+    email_notification = bool
+    
+    _received_time = datetime_type
+    _expired = bool
+    _closed = bool
+    _closed_time = datetime_type
+    _readed = bool
+    _type = int # TYPE_*
+
+    user = relation('User',pk='_id==user_id',listmode=False)
+
+    _opt = {
+        'default' : dict(_creation_time=datetime.datetime.utcnow,_received_time=datetime.datetime.now)
+    }
+
+    @property
+    def notification_type(self):
+        return self._type
+
+    @property
+    def received_time(self):
+        global _standard_time_format
+        return self._received_time.strftime(_standard_time_format)
+
+class UserCart(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    user_id = unicode
+    product_item_id = unicode
+    _added_time = datetime_type
+
+    user = relation('User',pk='_id==user_id',listmode=False)
+    product_item = relation('ProductItem',pk='_id==user_id',listmode=False)
+
+class UserActivity(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    ACCESS_PUBLIC = 0
+    ACCESS_PRIVATE = 1
+    ACCESS_INTERNAL = 2
+
+    TYPE_GENERAL = 0
+    TYPE_MAKE_BID = 1
+    TYPE_WRITE_COMMENT = 2
+    TYPE_MAKE_RECOMMENDATION = 3
+    TYPE_WRITE_TESTIMONIAL = 4
+    TYPE_MAKE_ABUSE = 5
+
+    user_id = unicode
+    last_time = datetime_type
+    info = unicode
+    
+    _access = int   # ACCESS_*
+    _type = int
+
+    user = relation('User',pk='_id==user_id',listmode=False)
+
+class Market(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    owner_user_id = unicode
+    name = unicode
+    description = unicode
+    pic_logo = unicode
+    address = unicode
+    city = unicode
+    province = unicode
+    country = unicode
+    zip_postal_code = unicode
+    phone1 = unicode
+    phone2 = unicode
+    fax = unicode
+    email = unicode
+    
+    settings = dict
+    bad_bidders = list  # list of User
+    
+    _creation_time = datetime_type
+    _closed = bool
+    _closed_time = datetime_type
+    
+    _certified = bool
+    _certification_type = int
+    _certified_since = datetime_type
+    
+    _reputation_level = int
+    _popularity_level = int
+    _suspended = bool
+    _suspended_info = unicode
+    _first_time_add_product_item = bool
+
+    owner = relation('User',pk='_id==owner_user_id',listmode=False)
+    product_items = relation('ProductItem',pk='owner_market_id==_id')
+    abuser = relation('Abuser',pk='item_id==_id')
+    visitors = relation('Visitor',pk='item_id==_id',cond=and_(item_class='Visitor'))
+    posts = relation('MarketPost',pk='market_id==_id',cond=and_(item_class='Post'))
+    testi = relation('Testimonial',pk='market_id==_id')
+
+
+    @property
+    def permalink(self):
+        '''Untuk mendapatkan url terformat alamat market
+        '''
+
+        return '/%s/market' % self.owner.name
+    
+    @property
+    def first_time_add_product_item(self):
+        return self._first_time_add_product_item and True or False
+
+    def short_description(self,width=100):
+        '''Untuk mendapatkan deskripsi yang dipendekkan dan ditambah '...'
+        '''
+        if len(self.description) > width:
+            return "%s..." % self.description[:width]
+        return self.description
+
+
+class MarketPost(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    market_id = unicode
+    poster_user_id = unicode
+    title = unicode
+    _content = unicode
+    order = int
+    _creation_time = datetime_type
+    _closed = bool
+    _closed_time = datetime_type
+    _deleted = bool
+    _deleted_time = datetime_type
+    _allow_comment = bool
+    _published = bool
+
+    market = relation('Market',pk='_id==market_id',listmode=False)
+    author = relation('User', pk='poster_user_id==_id',listmode=False)
+    comments = relation('Comment', pk='itemid==_id')
+
+    @property
+    def content(self):
+        '''Synonym for _content, get formated (encoded) content text,
+        format includes encode like spoiler, emoticon, etc
+        '''
+        return self._content
+
+    @property
+    def editable_content(self):
+        '''Show content in original editing format purpose
+        '''
+        return self._content
+
+    @property
+    def permalink(self):
+        import re
+        rv = re.sub(r'\W+', '-', self.title).strip('-')
+        return "/%s/market/post/%d/%s.html" % (self.market.owner.name,self.id,rv)
+
+
+    @property
+    def published(self):
+        '''Untuk mendapatkan info apakah postingan telah
+        dipublish atau tidak dalam mode terformat
+        '''
+
+        return self._published and _("Yes") or _("No")
+
+    @property
+    def comment_allowed(self):
+        return self._allow_comment
+
+class Testimonial(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    market_id = unicode
+    poster_user_id = unicode
+    subject = unicode
+    content = unicode
+    
+    _approved = bool
+    _creation_date = datetime_type
+    _deleted = bool
+    _deletion_date = datetime_type
+    _responsible_mod_id = unicode
+    _deletion_reason = unicode
+
+    poster = relation('User',pk='_id==poster_user_id',listmode=False)
+    market = relation('Market',pk='_id==market_id',listmode=False)
+
+class Visitor(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    item_id = unicode
+    user_id = unicode
+    
+    user = relation('User',pk='_id==user_id',listmode=False)
+    
+
+class Abuser(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    item_id = unicode
+    user_id = unicode
+    
+    user = relation('User',pk='_id==user_id',listmode=False)
+
+class ProductItem(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    # prduct state = 1.new, 2.second, 3.builtup etc
+
+    NEW = 1
+    SECOND = 2
+    BUILTUP = 3
+
+    market_id = unicode
+    name = unicode
+    description = unicode
+    category_id = int
+    _overview = unicode
+    currency_id = unicode
+    _price = float
+    _stock = int
+    auction = bool
+    auction_expired = bool
+    _starter_bid = float
+    _min_bid_addition = float
+    keywords = unicode
+    condition = int  # prduct condition = 1.new, 2.second, 3.buuiltup etc
+    related_review_link = unicode
+    _permalink = unicode
+    _allow_comment = bool
+    pic_thumbnail = unicode
+    status = int # prduct status = 1.available 2.sold 3.booked 4.delivered 5.pending 6.blank
+    status_relatedto_user_id = int # ex. sold to kocakboy
+    top_order = int
+    _auto_approve_bid = bool
+    _creation_time = datetime_type
+    _last_updated = datetime_type
+    _last_updated_by = unicode
+    _update_reason = unicode
+    _closed = bool
+    _closed_permanently = bool
+    _closed_time = datetime_type
+    _sold = bool
+    _sold_time = datetime_type
+    _out_of_stock = bool
+    _rank_level = int
+    _suspended = bool
+    _suspended_info = unicode
+    _deleted = bool
+    _deleted_time = datetime_type
+    _last_bid_update = datetime_type
+    _hash = int
+    
+    recommenders = list
+    viewers = list
+
+    market = relation('Market', pk='_id==market_id',listmode=False)
+    bids = relation('Bidder', pk='product_item_id==_id')
+    abuser = relation('Abuser', pk='product_item_id==_id')
+    currency = relation('Currency', pk='_id==currency_id')
+    comments = relation('Comment', pk='product_item_id==_id')
+    category = relation('ProductItemCategory', pk='_id==category_id',listmode=False)
+    last_editor = relation('User',pk='_last_updated_by==_id')
+    blacklist_user_bids = relation('BadBidder',pk='product_item_id==_id')
+    subscribers = relation('Subscription',pk='product_item_id==_id')
+
+    @property
+    def condition_str(self):
+        '''Buat dapetin string kondisi barang
+        '''
+        return {
+            self.SECOND: _("Second"),
+            self.NEW: _("New"),
+            self.BUILTUP: _("Built up")
+        }.get(self.status,self.SECOND)
+
+    @property
+    def closed_permanently(self):
+        '''Untuk memeriksa apakah item ditutup oleh system admin dan tidak bisa dikembalikan lagi.
+        Gunakan _closed_permanently untuk akses secara langsung
+        '''
+        return self._closed_permanently and True or False
+
+    @property
+    def closed(self):
+        '''Untuk memeriksa apakah item ditutup oleh pemilik (seller), masih bisa dikembalikan lagi oleh seller
+        Gunakan _closed untuk akses secara langsung
+        '''
+        return (self._closed or self._closed_permanently) and True or False
+
+    @property
+    def deleted(self):
+        '''Untuk memeriksa apakah item telah dihapus
+        Gunakan _deleted untuk akses secara langsung
+        '''
+        return self._deleted and True or False
+
+    @property
+    def deleted_time(self):
+        '''Untuk mendapatkan waktu terformat kapan item dihapus
+        gunakan _deleted_time untuk akses secara langsung
+        '''
+        return self._deleted_time.strftime('%a, %d/%m/%Y %H:%M:%S')
+
+    @property
+    def sold(self):
+        '''Untuk memeriksa apakah produk item telah terjual atau tidak,
+        sinonim dari _sold. gunakan _sold untuk akses secara langsung
+        '''
+
+        return self._sold and True or False
+
+    @property
+    def sold_time(self):
+        '''Untuk mendapapatkan waktu terformat kapan produk item telah terjual
+        '''
+
+        return self._sold_time.strftime('%a, %d/%m/%Y %H:%M:%S')
+
+    @property
+    def suspended(self):
+        '''Untuk mengetahui apakah item di-suspend atau tidak
+        Gunakan _suspended untuk akses secara langsung
+        '''
+        return self._suspended and True or False
+
+    @property
+    def suspend_reason(self):
+        '''Untuk mendapatkan iformasi kenapa item di-suspend
+        Gunakan _suspended_info untuk akses secara langsung
+        '''
+        return self._suspended_info
+
+    @property
+    def out_of_stock(self):
+        '''Untuk memeriksa apakan item habis (out of stock)
+        Gunakan _out_of_stock untuk akses secara langsung
+        '''
+        return self._out_of_stock and True or False
+
+
+    @property
+    def permalink(self):
+        '''Get product link. Use _permalink instead for direct modification
+        '''
+        return "/%s/%d/%s" % (link_pitem_permalink_prefix,self.id, self._permalink.encode('utf-8'))
+
+    @property
+    def bid_permalink(self):
+        '''Get product bid permalink. use _permalink instead for direct modification
+        '''
+        pass
+
+    @property
+    def thumbnail_path(self):
+        '''Get thumbnail image path/url. use thumbnail instead for modification
+        '''
+
+        rv = ""
+
+        if self.pic_thumbnail:
+            rv = "%s%s" % (link_pitem_thumbnail_path,self.pic_thumbnail.encode('utf-8'))
+        else:
+            rv = "%sno_image.gif" % link_pitem_thumbnail_path
+
+        return rv
+
+    @property
+    def auction_expiration_time(self):
+
+        return self.auction_expired.strftime('%a, %d/%m/%Y %H:%M:%S')
+
+
+    @property
+    def owner_permalink(self):
+        '''Get owner home link
+        '''
+
+        return "/%s" % self.market.owner.name
+
+    @property
+    def market_permalink(self):
+        '''Get owner market link
+        '''
+
+        return "/%s/market/" % self.market.owner.name
+
+    @property
+    def expired(self):
+        import datetime
+
+        # generate auction status (expired or not)
+        if self.auction:
+            return self.auction_expired <= datetime.datetime.now()
+        return False
+
+    def stockable(self):
+        if not self._stock:
+            return False
+        if self._stock > 0:
+            return True
+        return False
+
+    @property
+    def price(self):
+        '''Synonym for _price that will automatically format currency.
+        If you want to directly access to this attribute, use _price instead.
+        '''
+
+
+        if self._price==0:
+            return "Free"
+
+        if self.currency:
+            rv = "%s %s %s" % (self.currency.sign_first, format_numeric(self._price), self.currency.sign_last)
+        else:
+            rv = _('various')
+
+        return rv
+
+    @property
+    def starter_bid(self):
+        '''Synonym for _starter_bid that will automatically format currency.
+        If you want to directly access to this attribute, use _starter_bid instead.
+        '''
+
+        rv = "%s %s %s" % (self.currency.sign_first, format_numeric(self._starter_bid), self.currency.sign_last)
+
+        return rv
+
+    @property
+    def min_bid_addition(self):
+        '''Synonym for _min_bid_addition that will automatically format currency.
+        If you want to directly access to this attribute, use _min_bid_addition instead.
+        '''
+
+        rv = "%s %s %s" % (self.currency.sign_first, format_numeric(self._min_bid_addition), self.currency.sign_last)
+
+        return rv
+
+    @property
+    def overview(self):
+        '''Synonym for _overview that will automatically format overview, to encode first for spoiler, emoticon, etc...
+        If you want to directly access to this attribute, use _overview instead.
+        '''
+
+        if self.have_overview:
+            self._overview
+
+        return _("doesn't have overview")
+    
+    @property
+    def have_overview(self):
+        
+        return (self._overview and len(self._overview)>0)
+
+
+    def short_name(self,width=100):
+        '''nggo jeneng ning format sing dipendekake + ...
+        '''
+        if len(self.name) > width:
+            return '%s...' % self.name[:width]
+        return self.name
+
+    def short_description(self, width):
+        '''Untuk mendapatkan deskripsi yang dipendekkan dan ditambah '...'
+        '''
+        if len(self.description) > width:
+            return "%s..." % self.description[:width]
+        return self.description
+
+    @property
+    def creation_time(self):
+        '''Mendapatkan informasi tanggal dan waktu pembuatan dalam format yang standar
+        '''
+        return self._creation_time.strftime('%a, %d/%m/%Y %H:%M:%S')
+
+    @property
+    def updated_time(self):
+        '''Untuk mendapatkan info kapan terakhir item diperbaharui
+        Gunakan _updated_time untuk akses secara langsung
+        '''
+        return self._last_updated_by.strftime('%a, %d/%m/%Y %H:%M:%S')
+
+    @property
+    def last_bid_updated_time(self):
+        '''Untuk mendapatkan kapan terakhir bid diperbaharui
+        Gunakan _last_bid_update untuk akses secara langsung
+        '''
+        return self._last_bid_update.strftime('%a, %d/%m/%Y %H:%M:%S')
+
+    @property
+    def comment_allowed(self):
+        '''Untuk memeriksa apakah produk item boleh dikomentari.
+        berdasarkan atribut .`_allow_comment`
+        '''
+        return self._allow_comment and True or False
+
+    @property
+    def keywords_list(self):
+        '''Mengembalikan keywords in separated list
+        '''
+        if self.keywords and len(self.keywords)>0:
+            return tuple(map(lambda x: x.strip(),self.keywords.split(',')))
+        return tuple()
+
+    @property
+    def hash(self):
+        '''Get hash, synonym for ._hash
+        '''
+        return self._hash
+
+class Viewer(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    user_id = unicode
+
+    user = relation('User',pk='_id==user_id',listmode=False)
+
+
+class Bidder(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    product_item_id = unicode
+    bidder_user_id = unicode
+    _amount = float
+    bid_datetime = datetime_type
+    additional_info = unicode
+    _approved = bool
+
+    product_item = relation('ProductItem', pk='_id==product_item_id')
+    user = relation('User',pk='_id==user_id',listmode=False)
+
+    @property
+    def amount(self):
+        '''Synonym for _amount. get formated amount in currency format.
+        for direct access, use _amount instead
+        '''
+        return "%s %s %s" % (self.product_item.currency.sign_first, format_numeric(self._amount), self.product_item.currency.sign_last)
+
+    @property
+    def applied_on(self):
+        '''mendapatkan waktu bid (bid_datetime) yang terformat
+        '''
+        return self.bid_datetime.strftime("%a, %d/%m/%Y %H:%M:%S")
+
+class Recommend(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    product_item_id = unicode
+    user_id = unicode
+
+    user = relation('User',pk='_id==user_id',listmode=False)
+    item = relation('ProductItem',pk='_id==product_item_id',listmode=False)
+
+class ProductItemCategory(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    name = unicode
+    keywords = list
+    parent_id = unicode
+    active = bool
+
+    parent = relation('ProductItemCategory',pk='_id==parent_id',listmode=False)
+    subcategory = relation('ProductItemCategory',pk='parent_id==_id',listmode=False)
+    product_items = relation('ProductItem',pk='category_id==_id')
+
+    @property
+    def product_item_count(self):
+        return self.product_items.count()
+
+    @property
+    def url(self):
+        '''Mendapatkan url terformat alamat link ke kategori produk item
+        '''
+
+        category = self
+
+        p = []
+        while category:
+            p.append(category.name)
+            category = category.parent
+
+        p.reverse()
+
+        import urllib
+        rv = urllib.quote('/%s/category/%s/' %
+                          ( product,
+                           '/'.join(p)),
+                          '/:?&='
+                          )
+        return rv
+
+
+class Subscription(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    user_id = unicode
+    product_item_id = unicode
+    active = bool
+
+    user = relation('User',pk='_id==user_id')
+    item = relation('ProductItem',pk='_id==product_item_id')
+
+class Currency(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    name = unicode
+    sign_first = unicode
+    sign_last = unicode
+
+
+class BadBidder(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    user_id = unicode
+    _active = bool
+
+    
+class Comment(SuperDoc):
+    
+    _collection_name = 'test'
+    
+    itemid = unicode
+    wuid = long
+    message = unicode
+    _creation_time = datetime.datetime
+    
+    item = relation('Item',pk='_id==itemid',listmode=False)
+    writter = relation('User',pk='_id==wuid',listmode=False)
+    
+    _opt = {
+        'req' : ['itemid','wuid','content'],
+        'default' : {'_creation_time':datetime.datetime.now}
+    }
+    
+
+class parent(SuperDoc):
+    _collection_name = 'test'
+
+    childs = relation('child',pk='parent_id==_id',type='one-to-many')
+
+class child(SuperDoc):
+    _collection_name = 'test'
+    
+    parent_id = unicode
+    
+    parent = relation('child',pk='_id==parent_id',type='one-to-one')
+    
+
+mapper(User,
+       WallPost,
+       Message,
+       ChatMessage,
+       UserNotification,
+       UserCart,
+       UserActivity,
+       Market,
+       MarketPost,
+       Testimonial,
+       Visitor,
+       Abuser,
+       ProductItem,
+       Viewer,
+       Bidder,
+       Recommend,
+       ProductItemCategory,
+       Subscription,
+       Currency,
+       BadBidder,
+       Comment,
+       PostMany,
+       Tags,
+       PostFlip,
+       TagFlip,
+       parent,
+       child
+       )
+
 
 if __name__ == '__main__':
     
@@ -210,7 +1070,7 @@ if __name__ == '__main__':
             
             self.assertTrue( user, None )
             
-            user.wallposts.append(WallPost(message='tester is test',via='unitest',ruid=2,wuid=2))
+            user.wallposts.append(WallPost(message='tester is test',via='unitest'))
             user.save()
             
             self.assertEqual( user.wallposts.count(), 1 )
@@ -227,37 +1087,23 @@ if __name__ == '__main__':
             
         def test_single_relation(self):
             
+            monga._db.test.remove({})
+            
             usercol = monga.col(User)
             
-            usercol.query(name='tester').remove()
-            monga.col(WallPost).query(ruid=77).remove()
-            monga.col(WallPostComment).query(wuid=77).remove()
+            obin = usercol.new(name='Obin MF')
+            obin.save()
             
-            tester = User(name='tester',user_id=77)
-            usercol.insert(tester)
+            market = monga.col(Market).new(name='Market Keren')
+            market.save()
             
+            obin.market = market
             
-            tester.wallposts.append(WallPost(message='tester is test',via='unitest',ruid=77))
+            obin.save()
             
-            tester.save()
-            
-            self.assertEqual( tester.wallposts.count(), 1 )
-            
-            tester.wallposts[0].comments.append(WallPostComment(message='hai hai-1',wuid=77))
-            tester.wallposts[0].comments.append(WallPostComment(message='hai hai-2',wuid=77))
-            
-            tester.save()
-            
-            self.assertEqual( tester.wallposts[0].writter.name, 'tester' )
-            self.assertEqual( tester.wallposts[0].comments.count(), 2 )
-            self.assertEqual( tester.wallposts[0].comments[0].writter.name, 'tester')
-            
-            del tester.wallposts[0]
-            tester.save()
-            
-            self.assertEqual( tester.wallposts.count(), 0 )
-            self.assertEqual( monga.col(WallPostComment).find(wuid=77).count(), 0 )
-            
+            self.assertEqual( obin.market.name, 'Market Keren' )
+            self.assertEqual( market.owner.name, 'Obin MF' )
+
         def test_metaname(self):
             
             monga.col(PostMany).query().remove()
@@ -265,9 +1111,9 @@ if __name__ == '__main__':
             
             self.assertEqual( monga.col(Tags).find().count() , 0 )
             
-            monga.col(User).query(user_id=55).remove()
+            monga.col(User).query().remove()
             
-            user = monga.col(User).new(name='new_user',user_id=55)
+            user = monga.col(User).new(name='new_user')
             post = monga.col(PostMany).new(isi='apakekdah')
             post.posts.append(PostMany(isi='apaya'))
             post.tags.append(Tags(isi=['tags ajah']))
@@ -278,7 +1124,7 @@ if __name__ == '__main__':
             del user
             del post
             
-            user = monga.col(User).find_one(user_id=55)
+            user = monga.col(User).find_one(name='new_user')
             post = monga.col(PostMany).find_one(isi='apakekdah')
             
             self.assertEqual( user.name, 'new_user' )
@@ -430,10 +1276,10 @@ if __name__ == '__main__':
             #
             # test relation many-to-many but uses model it self
             #
-            user = monga.col(User).new(name='ada-deh',user_id=100)
+            user = monga.col(User).new(name='ada-deh')
             
-            exa = monga.col(User).new(name='exa-tester',user_id=101)
-            didit = monga.col(User).new(name='didit-tester',user_id=102)
+            exa = monga.col(User).new(name='exa-tester')
+            didit = monga.col(User).new(name='didit-tester')
             
             exa.save()
             didit.save()
@@ -501,73 +1347,52 @@ if __name__ == '__main__':
             
             self.assertEqual( post.nomor, 5 )
             
-        def test_smart_object_relation(self):
             
-            user = monga.col(User).new(name='tester-smart-obj',user_id=55)
-            user.save()
-            
-            user.wallposts.append(WallPost(message='test',writter=user))
-            user.save()
-            
-            post = WallPost(monga._db,message='post-smart-obj')
-            
-            post.save()
-            
-            self.assertEqual( post.writter, None )
-            
-            post.writter = user
-            post.save()
-            
-            self.assertEqual( post.writter.name, user.name )
-            
-            class parent(SuperDoc):
-                _collection_name = 'test'
-            
-                child_id = unicode
-            
-                anak = relation('child',pk='_id==child_id',listmode=False)
-            
-            class child(SuperDoc):
-                _collection_name = 'test'
-                
-            mapper(parent,child)
-                
-            ayah = parent(monga._db,name='ayah-exa')
-            exa = monga.col(child).new(name='exa-kun')
-            exa.save()
-            ayah.anak = exa
-            ayah.save()
-            
-            ayah = monga.col(parent).find_one(name='ayah-exa')
-            #ayah._echo = True
-            self.assertEqual( ayah.anak.name, 'exa-kun' )
-            
-            post = monga.col(WallPost).find_one(message='post-smart-obj')
-            
-            self.assertEqual( post.writter.name, 'tester-smart-obj')
-            
-            self.assertEqual( user.wallposts[0].writter.name, 'tester-smart-obj' )
-            
-            user.delete()
-            
-            self.assertEqual( monga.col(User).count(name='tester-smart-obj'), 0 )
-            
-        def test_submodel(self):
+        def test_many_child(self):
             
             monga._db.test.remove({})
-            monga._db.test.gadget.remove({})
             
-            gadget = monga.col(Gadget).new(name='Sony erricsson')
+            pa = monga.col(parent).new(name='anvie-keren')
             
-            gadget.save()
+            pa.childs.append(child(name='c1'))
+            pa.childs.append(child(name='c2'))
+            pa.childs.append(child(name='c3'))
+            pa.childs.append(child(name='c4'))
+            pa.childs.append(child(name='c5'))
+            pa.childs.append(child(name='c6'))
+            pa.childs.append(child(name='c7'))
+            pa.childs.append(child(name='c8'))
+            pa.childs.append(child(name='c9'))
+            pa.childs.append(child(name='c10'))
+            pa.childs.append(child(name='c11'))
+            pa.childs.append(child(name='c12'))
+            pa.childs.append(child(name='c13'))
+            pa.childs.append(child(name='c14'))
+            pa.childs.append(child(name='c15'))
+            pa.childs.append(child(name='c16'))
             
-            self.assertEqual( gadget.name, 'Sony erricsson' )
-            self.assertEqual( gadget._collection_name, 'test.gadget')
+            pa.save()
             
+            del pa
+            pa = monga.col(parent).find_one(name='anvie-keren')
+            
+            self.assertEqual( pa.name, 'anvie-keren' )
+            self.assertEqual( pa.childs[0].name, 'c1')
+            self.assertEqual( pa.childs[13].name, 'c14') # lazy load test memory cache
+            self.assertEqual( pa.childs[13].name, 'c14')
+            self.assertEqual( pa.childs[12].name, 'c13') # lazy load test memory cache
+            self.assertEqual( pa.childs[12].name, 'c13')
+            
+            # test pencarian di SuperDocList
+            self.assertEqual( pa.childs.find(name='c3'), pa.childs[2] )
+
         
     def main():
         suite = unittest.TestLoader().loadTestsFromTestCase(mongo_test)
         unittest.TextTestRunner(verbosity=2).run(suite)
+        
+        # clean up
+        monga._db.test.remove({})
         
     main()
     #import cProfile

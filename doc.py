@@ -43,7 +43,7 @@ class Doc(object):
         """Convert dicts to Nested object on setting the attribute.
         """
         
-        if key in reserved_words:
+        if key in superdoc_reserved_words:
             return object.__setattr__(self, key, value)
         
         obj_type = type(value)
@@ -55,6 +55,7 @@ class Doc(object):
             object.__setattr__(self, key, value)
             value = RelationDataType(value)
             setattr(self.__dict__['_data'], key, value)
+            
         else:
             global allowed_data_types
             
@@ -138,6 +139,7 @@ class Doc(object):
         """
 
         self.__dict__['_data']._id = self._db[self._collection_name].save(self.to_dict())
+        return self.__dict__['_data']._id is not None and True or False
         
     def delete(self):
         """Remove document from collection if a document id exists.

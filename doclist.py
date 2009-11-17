@@ -63,7 +63,58 @@ class DocList:
     def next(self):
         """Iterator
         """
-        
-
         return self._doctype( self._db, **dictarg(self._items.next()) )
 
+
+
+class SuperDocList(object):
+    
+    
+    def __init__(self, doclist):
+        
+        self._doclist = doclist
+        
+    def skip(self, num):
+        return SuperDocList( self._doclist.skip(num) )
+    
+    def limit(self, num):
+        return SuperDocList( self._doclist.limit(num) )
+        
+    def sort(self, **kwargs):
+        return SuperDocList( self._doclist.sort(**kwargs) )
+        
+    def tofirst(self):
+        return SuperDocList( self._doclist.rewind() )
+        
+    def find( self, **kwargs ):
+        docs = self._doclist.rewind().skip(0).limit(0)
+        for doc in docs:
+            matches = 0
+            for k, v in kwargs.iteritems():
+                if getattr( doc, k ) != v:
+                    break
+                matches += 1
+            if matches == len(kwargs):
+                return doc
+        return None
+        
+    def count( self ):
+        return self._doclist.count()
+        
+    def all(self):
+        return [ x for x in self._doclist ]
+        
+    def first( self ):
+        if self.count()>0:
+            self.tofirst()
+            return self.next()
+        return None
+        
+    def __iter__(self):
+        return self
+        
+    def next(self):
+        return self._doclist.next()
+        
+    def copy(self):
+        return copy.copy( self )
