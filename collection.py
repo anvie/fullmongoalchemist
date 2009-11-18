@@ -27,11 +27,12 @@ class Collection:
     """
     
     
-    def __init__(self, db, doctype):
+    def __init__(self, db, doctype, echo=False):
         
         self._doctype = doctype
         self._db = db   
         DBRef._db = db
+        self._echo = echo
 
         
     def new(self, **datas):
@@ -149,11 +150,15 @@ class Collection:
                 self._doctype = doctype
                 self.__query = query
         
-            def remove(self):
-                self._db[self._doctype._collection_name].remove(self.__query)
+            def remove(self, safe=False):
+                try:
+                    self._db[self._doctype._collection_name].remove(self.__query, safe = safe)
+                except:
+                    return False
+                return True
                 
             def update(self, update, options):
-                self._db[self._doctype._collection_name].update(
+                return self._db[self._doctype._collection_name].update(
                     self.__query, 
                     self._parse_update(update),
                     **options
@@ -187,11 +192,16 @@ class Collection:
         # dalam satu koleksi yg sama
         kwargs['_metaname_'] = self._doctype.__name__
         
+        _cond = self._parse_query(kwargs)
+        
+        if self._echo is True:
+            print 'find cond:', _cond
+        
         return SuperDocList(
             DocList(
                 self._db,
                 self._doctype, 
-                self._db[self._doctype._collection_name].find(self._parse_query(kwargs))
+                self._db[self._doctype._collection_name].find( _cond )
             )
         )
         

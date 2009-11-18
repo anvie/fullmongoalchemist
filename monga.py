@@ -37,12 +37,12 @@ class MongoDB(object):
         del self._db
         del self._cn
         
-    def col(self, doctype):
+    def col(self, doctype, echo=False):
         
         if not self.connected:
             raise ConnectionError, "mongo db not connected"
         
-        return Collection(self._db, doctype)
+        return Collection(self._db, doctype, echo=echo)
         
     def set_db(self,db_name):
         
