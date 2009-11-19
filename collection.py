@@ -63,10 +63,12 @@ class Collection:
                 k = k[:k.find('__' + op)]
                 v = {'$%s' % op: k == '_id' and ObjectId(str(v)) or v }
                 
+            v = k == '_id' and  type(v) in (unicode,str) and ObjectId(str(v)) or v
+            v = type(v) == list and str(v) or v
             
             # XXX dunno if we really need this?
-            if type(v) == list:
-                v = str(v)
+            #if type(v) == list:
+            #    v = str(v)
             
             # convert django style notation into dot notation
             key = k.replace('__', '.')
@@ -160,9 +162,12 @@ class Collection:
                     return False
                 return True
                 
-            def update(self, update, options):
+            def update(self, update, options = {}):
+                
+                _cond = '_id' in update and ObjectId(str(update['_id'])) or self.__query
+                
                 return self._db[self._doctype._collection_name].update(
-                    self.__query, 
+                    _cond, 
                     self._parse_update(update),
                     **options
                 )

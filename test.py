@@ -229,7 +229,7 @@ class WallPost(SuperDoc):
     comments = relation('Comment',pk='itemid==_id', cascade='delete')
     
     _opt = {
-        'req' : ['wuid','ruid','message','via'],
+        'req' : ['message','via'],
         'default' : dict(_creation_time=datetime.datetime.utcnow),
         'strict' : True
     }
@@ -944,18 +944,19 @@ class Comment(SuperDoc):
     
     _collection_name = 'test'
     
-    itemid = unicode
-    wuid = long
+    item_id = unicode
+    writer_id = unicode
     message = unicode
-    _creation_time = datetime.datetime
+    _creation_time = datetime_type
+    _last_edited = datetime_type
     
-    item = relation('Item',pk='_id==itemid',listmode=False)
-    writter = relation('User',pk='_id==wuid',listmode=False)
+    writer = relation('User',pk='_id==writter_id',listmode=False)
     
     _opt = {
-        'req' : ['itemid','wuid','content'],
+        'req' : ['item_id','writer_id','message','_creation_time'],
         'default' : {'_creation_time':datetime.datetime.now}
     }
+    
     
 
 class parent(SuperDoc):
@@ -1417,6 +1418,17 @@ if __name__ == '__main__':
             u = monga.col(User).find_one(name='anvie-keren')
             
             self.assertEqual( u.settings.oi, 'yeah' )
+            
+        def test_default_value(self):
+            
+            monga._db.test.remove({})
+            
+            comment = monga.col(Comment).new(message="hai test",writer_id=u"0",item_id=u"0")
+            comment.save()
+            
+            self.assertNotEqual( comment._creation_time , None )
+            
+            
 
         
     def main():

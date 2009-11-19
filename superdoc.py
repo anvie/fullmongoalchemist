@@ -21,7 +21,6 @@ class SuperDoc(Doc):
         
         #build reserved entry name
         self.__dict__['_reserved_entry_name'] = []
-        self.__dict__['_opt'] = {}
         
         rel_names = filter( lambda x: type( getattr(self.__class__, x) ) == relation, dir(self.__class__) )
         for reln in rel_names:
@@ -37,10 +36,9 @@ class SuperDoc(Doc):
         
         self.__dict__['_data'] = Nested(datas)
         
-        _has_opt = hasattr(self,"_opt")
+        _has_opt = hasattr( self, '_opt' )
         
         if _has_opt:
-            self.__dict__['_opt'] = self._opt
             if self._opt.get('strict') == True:
                 for k in datas.keys():
                     if not self.__has_entryname(k):
@@ -58,7 +56,7 @@ class SuperDoc(Doc):
         if _has_opt:
             if not self._saved() and self._opt.has_key('default'):
                 for k, v in self._opt['default'].iteritems():
-                    if getattr( self, k ) == None:
+                    if hasattr(self, k):
                         if getattr(self.__dict__['_data'], k) is None:
                             if type( v ) in [types.FunctionType, types.BuiltinFunctionType]:
                                 setattr( self.__dict__['_data'], k, apply( v ) )
@@ -66,7 +64,7 @@ class SuperDoc(Doc):
                                 setattr( self.__dict__['_data'], k, v )
                     else:
                         raise SuperDocError, \
-                            '%s has no attribute name %s for default value assignment' \
+                            '`%s` has no entryname `%s` for default value assignment' \
                             % (self.__class__.__name__,k)
 
         setattr(self,'_db',_db)
@@ -144,7 +142,10 @@ class SuperDoc(Doc):
             
     def validate(self):
         
-        req = self.__dict__['_opt'].get('req')
+        if not hasattr( self, '_opt' ):
+            return 'not checked'
+        
+        req = self._opt.get('req')
         if req is not None:
             for x in req:
                 
@@ -157,6 +158,9 @@ class SuperDoc(Doc):
         return 'OK'
 
     def save(self):
+        '''Save/insert doc
+        @TODO: buat acknowledge biar tau save/insert-nya berhasil atau gak?
+        '''
 
         self.validate()
         
@@ -279,7 +283,7 @@ class SuperDoc(Doc):
         if k in superdoc_reserved_words or k.startswith('_x_'):
             return Doc.__setattr__(self, k , v)
         
-        if self.__dict__.has_key('_opt') and self.__dict__['_opt'].get('strict') == True:
+        if self.__dict__.has_key('_opt') and self._opt.get('strict') == True:
             if self.__has_entryname( k ) == False:
                 raise SuperDocError, "`%s` is strict model. Cannot assign entryname for `%s`" % ( self.__class__.__name__,k )
         
