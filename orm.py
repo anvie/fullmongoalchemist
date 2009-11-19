@@ -5,6 +5,7 @@ from exc import RelationError
 from doclist import DocList, SuperDocList
 from pymongo.objectid import ObjectId
 from const import relation_reserved_words
+from utils import parse_query
 
 import random
 import copy
@@ -153,9 +154,7 @@ class relation(object):
         yg lainnya nyusul bergantung permintaan dari user.
         '''
         
-        if not hasattr( self, '_parent_class' ): return None
-        
-        if self._parent_class is None: return None
+        if not self.__ready_db_read(): return None
         
         if self._parent_class._saved() == False: return None
             
@@ -195,6 +194,68 @@ class relation(object):
         self.__dict__['_data'] = rv and rel_class( self._parent_class._db, **dictarg(rv) ) or None
             
         return self.__dict__['_data']
+        
+        
+    def __ready_db_read(self):
+        return hasattr( self, '_parent_class' ) and self._parent_class is not None
+        
+        
+    def find( self, **kwargs ):
+        '''Untuk mencari item berdasarkan kunci :kwargs,
+        hanya untuk relasi jenis one-to-many dan many-to-many.
+        '''
+        if self._type is 'one-to-one':
+            raise RelationError, "this function only for one-to-many and or many-to-many relation"
+        
+        if not self.__ready_db_read(): return None
+        
+        _cond = self.__get_where_clause()
+        
+        if not _cond: return None
+        
+        addf = kwargs
+        if '_id' in kwargs:
+            addf['_id'] = ObjectId(str(kwargs['_id']))
+            
+        _cond.update( parse_query( addf ) )
+        
+        if self._parent_class._echo == True:
+            print 'query: %s' % repr(_cond)
+        
+        rel_class = self._get_rel_class()
+        
+        rv = self._parent_class._db[rel_class._collection_name].find_one( _cond )
+        return rv and rel_class( self._parent_class._db, **dictarg(rv) ) or None
+        
+        
+    def filter( self, **kwargs ):
+        '''Filter item berdasarkan kunci :kwargs.
+        hanya untuk relasi jenis ont-to-many dan many-to-many.
+        return:
+            SuperDocList
+        '''
+        if self._type is 'one-to-one':
+            raise RelationError, "this function only for one-to-many and or many-to-many relation"
+        
+        if not self.__ready_db_read(): return None
+        
+        _cond = self.__get_where_clause()
+        
+        if not _cond: return None
+        
+        _cond.update( parse_query( kwargs ) )
+        
+        if self._parent_class._echo == True:
+            print 'query: %s' % repr(_cond)
+        
+        rel_class = self._get_rel_class()
+        
+        return SuperDocList (
+            DocList( self._parent_class._db,
+                    rel_class,
+                    self._parent_class._db[rel_class._collection_name].find( _cond )
+                    )
+            )
         
         
     def _get_rel_class(self):

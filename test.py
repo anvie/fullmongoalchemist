@@ -1339,6 +1339,9 @@ if __name__ == '__main__':
             
             post.nomor = 5
             post.yatidak = True
+            post.yatidak = 1
+            post.yatidak = 0
+            
             
             post.save()
             del post
@@ -1383,8 +1386,13 @@ if __name__ == '__main__':
             self.assertEqual( pa.childs[12].name, 'c13') # lazy load test memory cache
             self.assertEqual( pa.childs[12].name, 'c13')
             
-            # test pencarian di SuperDocList
+            # test pencarian single item
             self.assertEqual( pa.childs.find(name='c3'), pa.childs[2] )
+            
+            # test pencarian menggunakan metode filter
+            rv = pa.childs.filter(name__in=['c5','c12'])
+            self.assertEqual( rv.count(), 2 )
+            self.assertEqual( rv.all()[0].name, 'c5' )
             
         def test_list_dict(self):
             

@@ -59,8 +59,10 @@ class Collection:
             op = k.split('__')[-1]
             if op in ('lte', 'gte', 'lt', 'gt', 'ne',
                 'in', 'nin', 'all', 'size', 'exists'):
-                v = {'$' + op: v}
+                
                 k = k[:k.find('__' + op)]
+                v = {'$%s' % op: k == '_id' and ObjectId(str(v)) or v }
+                
             
             # XXX dunno if we really need this?
             if type(v) == list:
@@ -73,6 +75,7 @@ class Collection:
             # it's necessary for pymongo search working correctly
             if type(v) == SuperDoc:
                 v = DBRef(v._collection,v._id)
+                
             
             q[key] = v
         return q

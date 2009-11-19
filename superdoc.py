@@ -287,6 +287,10 @@ class SuperDoc(Doc):
             typedata = getattr( self.__class__, '_x_%s' % k )
             #v = type(v)==str and unicode(v) or v
             if typedata != type(v) and type(v) is not types.NoneType:
+                
+                if typedata is bool and v not in (1,0):
+                    raise SuperDocError, "mismatch data type `%s`=%s and `%s`=%s" % (k,typedata,v,type(v))
+                    
                 # try to convert it if possible
                 try:
                     v = typedata(v)

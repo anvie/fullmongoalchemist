@@ -86,18 +86,6 @@ class SuperDocList(object):
     def tofirst(self):
         return SuperDocList( self._doclist.rewind() )
         
-    def find( self, **kwargs ):
-        docs = self._doclist.rewind().skip(0).limit(0)
-        for doc in docs:
-            matches = 0
-            for k, v in kwargs.iteritems():
-                if getattr( doc, k ) != v:
-                    break
-                matches += 1
-            if matches == len(kwargs):
-                return doc
-        return None
-        
     def count( self ):
         return self._doclist.count()
         
