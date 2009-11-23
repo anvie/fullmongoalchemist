@@ -441,6 +441,10 @@ class relation(object):
         
         if self.listmode:
             if len(self.__dict__)>0:
+                
+                # convert k if -1 (pythonic method for get last item inside of list)
+                k = k == -1 and (self.__dict__['_data'].count() - 1) or k
+                
                 if len(self.__dict__['_cached_repr']) > k and self.__dict__['_cached_repr'][k] is not None:
                     return self.__dict__['_cached_repr'][k]
                     

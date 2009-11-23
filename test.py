@@ -1008,8 +1008,9 @@ if __name__ == '__main__':
     monga = MongoDB('anvie','','','127.0.0.1',27017)
     print 'connected:',monga.connected
     
-    #user = monga.col(User).find_one(name='anvie')
-    #print user.wallposts
+    ## using python remote debugger
+    #from dbgp.client import brk
+    #brk()
     
     import unittest
     
@@ -1428,8 +1429,6 @@ if __name__ == '__main__':
             
             self.assertNotEqual( comment._creation_time , None )
             
-            
-
         
     def main():
         suite = unittest.TestLoader().loadTestsFromTestCase(mongo_test)

@@ -166,8 +166,14 @@ class SuperDoc(Doc):
         
         if self._db is None:
             raise SuperDocError, "This res not binded to database. Try to bind it first use bind_db(<db>)"
+        
+        # reset dulu error tracknya, buat jaga kalo2 dibutuhkan buat error checking
+        self._db.reset_error_history()
 
         Doc.save(self)
+        
+        if self.get_last_error() is not None:
+            return False
         
         global RELATION_RECURSION_DEEP, MAX_RECURSION_DEEP
         
@@ -189,6 +195,14 @@ class SuperDoc(Doc):
         # refresh relation state
         self.__map_relation()
         
+        return True
+        
+    
+    def get_last_error(self):
+        '''Kanggo ngolehake informasi errore.
+        nek raono error yo None lah return-ne.
+        '''
+        return self._db.previous_error()
 
 
     def _call_relation_attr(self, attr, *args, **kwargs):

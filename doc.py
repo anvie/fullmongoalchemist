@@ -50,6 +50,7 @@ class Doc(object):
         
         if obj_type == dict:
             value = Nested(value)
+            setattr(self.__dict__['_data'], key, value)
             
         elif obj_type == relation:
             object.__setattr__(self, key, value)
