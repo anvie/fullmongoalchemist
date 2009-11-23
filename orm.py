@@ -79,6 +79,10 @@ class relation(object):
             else:
                 # use pk
                 self._cond = and_(**{self._pk[0]:':%s' % self._pk[1]})
+                
+                
+        if self._type != 'one-to-one':
+            self._order = kwargs.get('order')
         
         self.cascade = kwargs.get('cascade', None)
         self._parent_class = None
@@ -171,7 +175,6 @@ class relation(object):
 
         if self.listmode:
             
-
             self.__dict__['_data'] = SuperDocList (
                             DocList( self._parent_class._db,
                                     rel_class,
@@ -180,7 +183,11 @@ class relation(object):
                                          )
             
             # alokasikan null memory sebesar jumlah item pada db
-            cached_data = self.__dict__['_data'].sort(_id=1).limit(10).all() # maximum to 10...
+            if self._order is not None:
+                cached_data = self.__dict__['_data'].sort( **self._order ).limit(10).all() # maximum to 10...
+            else:
+                cached_data = self.__dict__['_data'].sort(_id=1).limit(10).all() # maximum to 10...
+                
             if self.__dict__['_data'].count() > 10:
                 cached_data += [ None for x in xrange(0,self.__dict__['_data'].count() - 10) ]
             
@@ -275,15 +282,20 @@ class relation(object):
 
     def append(self, data):
 
+        # just for one-to-many or many-to-many relation
+        if self.listmode is False:
+            raise RelationError, "non one-to-many or many-to-many relation"
+
         if not self._is_data_related(data):
             raise RelationError, "data not related: %s <=> %s" % (self._rel_class_name,type(data))
             
             
-        if self._type in ('on-to-many','on-to-one') and self._pk[1] != '_id' and not self._parent_class.__dict__['_data']._hasattr(self._pk[1]):
+        if self._type in ('one-to-many','one-to-one') and self._pk[1] != '_id' and not self._parent_class.__dict__['_data']._hasattr(self._pk[1]):
             raise RelationError, "%s has no attribute %s" % (self._parent_class.__class__.__name__, self._pk[1])
             
-
-        data.validate()
+        # setting pk fk if possible, before validation
+        #v = getattr( self._parent_class, self._pk[1] )
+        #setattr( data, self._pk[0], type(v) is ObjectId and str(v) or v )
         
         data.bind_db( self._parent_class._db )
         
@@ -307,8 +319,8 @@ class relation(object):
 
         if self.listmode:
             
-            _datas = [ x for x in self.__dict__['_new_data'] ]
-            _datas.extend([ x for x in self.__dict__['_cached_repr'] if x not in _datas ])
+            _datas = [ x for x in self.__dict__['_new_data'] if x is not None ]
+            _datas.extend([ x for x in self.__dict__['_cached_repr'] if x is not None and x not in _datas])
 
             for data in _datas:
                 
@@ -354,7 +366,7 @@ class relation(object):
                         # delete it after used
                         delattr( data.__dict__['_data'], rel )
                         
-                    
+
                     data.save()
                     del self.__dict__['_new_data'][:]
                     
@@ -451,7 +463,10 @@ class relation(object):
                 elif len(self.__dict__['_new_data']) > k:
                     return self.__dict__['_new_data'][k]
                     
-                rv = self.__dict__['_data'].skip(k).limit(1).first()
+                if self._order is not None:
+                    rv = self.__dict__['_data'].sort( **self._order ).skip(k).limit(1).first()
+                else:
+                    rv = self.__dict__['_data'].sort( _id = 1 ).skip(k).limit(1).first()
                 if rv is not None:
                     # simpan di cache pada point ke k
                     self.__dict__['_cached_repr'][k] = rv
@@ -487,10 +502,12 @@ class relation(object):
         
     def __delitem__(self, k):
         
+        #k = k == -1 and (self.__dict__['_data'].count() - 1) or k
+        
         if type(k) == slice:
-            self.__dict__['_deleted_item'].extend(self.__dict__['_cached_repr'][k])
+            self.__dict__['_deleted_item'].extend(self[k])
         else:
-            self.__dict__['_deleted_item'].append(self.__dict__['_cached_repr'][k])
+            self.__dict__['_deleted_item'].append(self[k])
         
         self.__child_modif(item=self.__dict__['_cached_repr'][k],diff='deleted')
         

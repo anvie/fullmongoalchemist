@@ -1383,8 +1383,8 @@ if __name__ == '__main__':
             
             self.assertEqual( pa.name, 'anvie-keren' )
             self.assertEqual( pa.childs[0].name, 'c1')
+            #from dbgp.client import brk; brk()
             self.assertEqual( pa.childs[13].name, 'c14') # lazy load test memory cache
-            self.assertEqual( pa.childs[13].name, 'c14')
             self.assertEqual( pa.childs[12].name, 'c13') # lazy load test memory cache
             self.assertEqual( pa.childs[12].name, 'c13')
             
