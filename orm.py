@@ -111,6 +111,12 @@ class relation(object):
 
     def _update_hash(self):
         self._current_hash = str(abs(hash(random.random())))
+        
+    def _update_index( self, key, ttl=6000 ):
+        '''Untuk meng-index db, kalo diperlukan.
+        '''
+        #@TODO: lanjutkan!
+        self._parent_class._db[self._parent_class._collection_name].ensure_index(key,ttl=ttl)
 
     def refresh(self):
 
@@ -237,7 +243,7 @@ class relation(object):
         
     def filter( self, **kwargs ):
         '''Filter item berdasarkan kunci :kwargs.
-        hanya untuk relasi jenis ont-to-many dan many-to-many.
+        hanya untuk relasi jenis one-to-many dan many-to-many.
         return:
             SuperDocList
         '''

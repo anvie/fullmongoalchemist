@@ -238,6 +238,11 @@ class Collection:
         '''
         return self.find( **kwargs ).count()
         
+    def ensure_index( self, key, ttl=600, unique=False ):
+        '''nggo ngawe index nek perlu
+        '''
+        return self._db[self._doctype._collection_name].ensure_index(key, ttl = ttl, unique = unique)
+        
 
 #@TODO: finish this code bellow
 
