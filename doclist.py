@@ -7,13 +7,13 @@ class DocList:
     """
     
     
-    def __init__(self, db, doctype, items):
+    def __init__(self, _monga_instance, doctype, items):
         """Initialize DocList using the collection it belongs to and
         the items as iterator.
         """
         
         self._items = items
-        self._db = db
+        self._monga = _monga_instance
         self._doctype = doctype
     
     def __iter__(self):
@@ -26,13 +26,13 @@ class DocList:
         """Skip 'num' docs starting at the beginning.
         """
     
-        return DocList(self._db, self._doctype, self._items.skip(num))
+        return DocList(self._monga, self._doctype, self._items.skip(num))
         
     def limit(self, num):
         """Limit result list to 'num' docs.
         """
         
-        return DocList(self._db, self._doctype, self._items.limit(num))
+        return DocList(self._monga, self._doctype, self._items.limit(num))
         
     def sort(self, **kwargs):
         """Sort result on key.
@@ -41,7 +41,7 @@ class DocList:
         """
         
         sort = [(k.replace('__', '.'), v) for k, v in kwargs.items()]
-        return DocList(self._db, self._doctype, self._items.sort(sort))
+        return DocList(self._monga, self._doctype, self._items.sort(sort))
         
     def __len__(self):
         """Number of results.
@@ -58,12 +58,12 @@ class DocList:
     def rewind(self):
         '''nggo muter walik meng item pertama maneh
         '''
-        return DocList( self._db, self._doctype, self._items.rewind() )
+        return DocList( self._monga, self._doctype, self._items.rewind() )
     
     def next(self):
         """Iterator
         """
-        return self._doctype( self._db, **dictarg(self._items.next()) )
+        return self._doctype( self._monga, **dictarg(self._items.next()) )
 
 
 

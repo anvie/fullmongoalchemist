@@ -141,7 +141,7 @@ class Doc(object):
         If document is new, set generated ID to document _id.
         """
 
-        self.__dict__['_data']._id = self._db[self._collection_name].save(self.to_dict())
+        self.__dict__['_data']._id = self._monga._db[self._collection_name].save(self.to_dict())
         return self.__dict__['_data']._id is not None and True or False
         
     def delete(self):
@@ -149,7 +149,7 @@ class Doc(object):
         """
         
         if getattr(self.__dict__['_data'], '_id') is not None:
-            rv = self._db[self._collection_name].remove(
+            rv = self._monga._db[self._collection_name].remove(
                 {'_id': self.__dict__['_data']['_id']}
             )
             self.__dict__['_data']._id = None

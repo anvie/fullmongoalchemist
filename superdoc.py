@@ -16,23 +16,27 @@ class SuperDoc(Doc):
     '''Advanced document for mongo ORM data model
     '''
     
-    def __init__(self, _db=None, **datas):
-        
+    def __init__(self, _monga_instance=None, **datas):
         
         #build reserved entry name
         self.__dict__['_reserved_entry_name'] = []
         
         rel_names = filter( lambda x: type( getattr(self.__class__, x) ) == relation, dir(self.__class__) )
+
         for reln in rel_names:
             rel = getattr( self, reln )
             if rel._type == 'many-to-many':
                 self.__dict__['_reserved_entry_name'].append(rel._keyrel[0])
+            else:
+                self.__dict__['_reserved_entry_name'].append(reln)
         
         self._pending_ops = PendingOperation(self)
-        self._load( _db, **datas )
+        self._load( _monga_instance, **datas )
         self._echo = False
         
-    def _load(self, _db, **datas):
+    def _load(self, _monga_instance, **datas):
+        
+        self._monga = _monga_instance
         
         self.__dict__['_data'] = Nested(datas)
         
@@ -50,9 +54,6 @@ class SuperDoc(Doc):
 
         self.__sanitize()
         
-        # buat metaname untuk modelnya
-        setattr( self.__dict__['_data'], '_metaname_', self.__class__.__name__ )
-        
         if _has_opt:
             if not self._saved() and self._opt.has_key('default'):
                 for k, v in self._opt['default'].iteritems():
@@ -66,8 +67,6 @@ class SuperDoc(Doc):
                         raise SuperDocError, \
                             '`%s` has no entryname `%s` for default value assignment' \
                             % (self.__class__.__name__,k)
-
-        setattr(self,'_db',_db)
 
         #@TODO: mungkin butuh optimasi?
         for x in dir(self.__class__):
@@ -114,8 +113,8 @@ class SuperDoc(Doc):
         self.__dict__['_modified_childs'] = []
         
         
-    def bind_db(self, db):
-        self._db = db
+    def set_monga(self, _monga):
+        self._monga = _monga
 
     def __sanitize(self):
         
@@ -164,11 +163,15 @@ class SuperDoc(Doc):
 
         self.validate()
         
-        if self._db is None:
+        if self._monga is None:
             raise SuperDocError, "This res not binded to database. Try to bind it first use bind_db(<db>)"
         
+        if self._monga.config.get('nometaname') == False:
+            # buat metaname untuk modelnya
+            setattr( self.__dict__['_data'], '_metaname_', self.__class__.__name__ )
+        
         # reset dulu error tracknya, buat jaga kalo2 dibutuhkan buat error checking
-        self._db.reset_error_history()
+        self._monga._db.reset_error_history()
 
         Doc.save(self)
         
@@ -202,7 +205,7 @@ class SuperDoc(Doc):
         '''Kanggo ngolehake informasi errore.
         nek raono error yo None lah return-ne.
         '''
-        return self._db.previous_error()
+        return self._monga._db.previous_error()
 
 
     def _call_relation_attr(self, attr, *args, **kwargs):
@@ -223,12 +226,12 @@ class SuperDoc(Doc):
         if self._id is None:
             raise SuperDocError, "Cannot refresh data from db, may unsaved document?"
         
-        doc = self._db[self._collection_name].find_one(self._id)
+        doc = self._monga._db[self._collection_name].find_one(self._id)
         
         if not doc:
             return False
         
-        self._load( self._db, **dictarg(doc) )
+        self._load( self._monga, **dictarg(doc) )
         self.__map_relation()
         
         return True
@@ -380,9 +383,9 @@ class SuperDoc(Doc):
             rela = getattr( vrela, '_get_rel_class' )()
             mykey = getattr(self.__dict__['_data'],backref[1])
             
-            all_rela_obj = self._db[rela._collection_name].find({ keyrel[0]: mykey })
+            all_rela_obj = self._monga._db[rela._collection_name].find({ keyrel[0]: mykey })
             
-            col_save = self._db[rela._collection_name].save
+            col_save = self._monga._db[rela._collection_name].save
             
             for rela_obj in all_rela_obj:
                 

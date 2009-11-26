@@ -2,6 +2,7 @@
 from pymongo.objectid import ObjectId
 from exc import RelationError
 from utils import parse_query
+from pymongo.binary import Binary
 
 class ConditionQuery(object):
     

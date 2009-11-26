@@ -116,7 +116,7 @@ class relation(object):
         '''Untuk meng-index db, kalo diperlukan.
         '''
         #@TODO: lanjutkan!
-        self._parent_class._db[self._parent_class._collection_name].ensure_index(key,ttl=ttl)
+        self._parent_class._monga._db[self._parent_class._collection_name].ensure_index(key,ttl=ttl)
 
     def refresh(self):
 
@@ -152,7 +152,10 @@ class relation(object):
             rv = self._cond.where( **dict(map( lambda x: (x, hasattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) and getattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) or None ), self._cond.raw.values() )))
         
         if rv and type(rv) == dict:
-            rv['_metaname_'] = self._rel_class_name
+
+            if self._parent_class._monga.config.get('nometaname') == False:
+                # uses metaname
+                rv['_metaname_'] = self._rel_class_name
             
         return rv
         
@@ -182,9 +185,9 @@ class relation(object):
         if self.listmode:
             
             self.__dict__['_data'] = SuperDocList (
-                            DocList( self._parent_class._db,
+                            DocList( self._parent_class._monga,
                                     rel_class,
-                                    self._parent_class._db[rel_class._collection_name].find( _cond )
+                                    self._parent_class._monga._db[rel_class._collection_name].find( _cond )
                                     )
                                          )
             
@@ -203,8 +206,8 @@ class relation(object):
             return self.__dict__['_data']
             
         # single mode one-to-one type
-        rv = self._parent_class._db[rel_class._collection_name].find_one( _cond )
-        self.__dict__['_data'] = rv and rel_class( self._parent_class._db, **dictarg(rv) ) or None
+        rv = self._parent_class._monga._db[rel_class._collection_name].find_one( _cond )
+        self.__dict__['_data'] = rv and rel_class( self._parent_class._monga, **dictarg(rv) ) or None
             
         return self.__dict__['_data']
         
@@ -237,8 +240,8 @@ class relation(object):
         
         rel_class = self._get_rel_class()
         
-        rv = self._parent_class._db[rel_class._collection_name].find_one( _cond )
-        return rv and rel_class( self._parent_class._db, **dictarg(rv) ) or None
+        rv = self._parent_class._monga._db[rel_class._collection_name].find_one( _cond )
+        return rv and rel_class( self._parent_class._monga, **dictarg(rv) ) or None
         
         
     def filter( self, **kwargs ):
@@ -256,7 +259,8 @@ class relation(object):
         
         if not _cond: return None
         
-        _cond.update( parse_query( kwargs ) )
+        if len(kwargs) > 0:
+            _cond.update( parse_query( kwargs ) )
         
         if self._parent_class._echo == True:
             print 'query: %s' % repr(_cond)
@@ -264,12 +268,19 @@ class relation(object):
         rel_class = self._get_rel_class()
         
         return SuperDocList (
-            DocList( self._parent_class._db,
+            DocList( self._parent_class._monga,
                     rel_class,
-                    self._parent_class._db[rel_class._collection_name].find( _cond )
+                    self._parent_class._monga._db[rel_class._collection_name].find( _cond )
                     )
             )
-        
+    
+    def all(self):
+        '''Mendapatkan semua record pada relasi.
+        hanya untuk relasi jenis one-to-many dan many-to-many.
+        return:
+            SuperDocList
+        '''
+        return self.filter().all()
         
     def _get_rel_class(self):
         global mapped_user_class_docs
@@ -303,7 +314,7 @@ class relation(object):
         #v = getattr( self._parent_class, self._pk[1] )
         #setattr( data, self._pk[0], type(v) is ObjectId and str(v) or v )
         
-        data.bind_db( self._parent_class._db )
+        data.set_monga( self._parent_class._monga )
         
         self.__dict__['_new_data'].append(data)
         self.__dict__['_cached_repr'].append(data)
@@ -402,12 +413,12 @@ class relation(object):
                         getattr( data.__dict__['_data'], self._backref[0] ).append( key )
                     
                     # update child relation
-                    data.__dict__['_data']._id = self._parent_class._db[self._parent_class._collection_name].save(data.to_dict())
+                    data.__dict__['_data']._id = self._parent_class._monga._db[self._parent_class._collection_name].save(data.to_dict())
                     
                     
             if self._type == 'many-to-many':
                 # save/update parent class
-                self._parent_class.__dict__['_data']._id = self._parent_class._db[self._parent_class._collection_name].save(self._parent_class.to_dict())
+                self._parent_class.__dict__['_data']._id = self._parent_class._monga._db[self._parent_class._collection_name].save(self._parent_class.to_dict())
                 
             del self.__dict__['_new_data'][:]
             

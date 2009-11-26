@@ -27,11 +27,11 @@ class Collection:
     """
     
     
-    def __init__(self, db, doctype, echo=False):
+    def __init__(self, _monga_instance, doctype, echo=False):
         
         self._doctype = doctype
-        self._db = db   
-        DBRef._db = db
+        self._monga = _monga_instance
+        DBRef._db = _monga_instance._db
         self._echo = echo
 
         
@@ -39,7 +39,7 @@ class Collection:
         """Return empty document, with preset collection.
         """
         
-        return self._doctype( self._db, **datas )
+        return self._doctype( self._monga, **datas )
 
 
     def _parse_query(self, kwargs):
@@ -150,14 +150,14 @@ class Collection:
         """
         
         class RemoveUpdateHandler(Collection):
-            def __init__(self, db, doctype, query):
-                self._db = db
+            def __init__(self, _monga_instance, doctype, query):
+                self._monga = _monga_instance
                 self._doctype = doctype
                 self.__query = query
         
             def remove(self, safe=False):
                 try:
-                    self._db[self._doctype._collection_name].remove(self.__query, safe = safe)
+                    self._monga._db[self._doctype._collection_name].remove(self.__query, safe = safe)
                 except:
                     return False
                 return True
@@ -166,25 +166,26 @@ class Collection:
                 
                 _cond = '_id' in update and ObjectId(str(update['_id'])) or self.__query
                 
-                return self._db[self._doctype._collection_name].update(
+                return self._monga._db[self._doctype._collection_name].update(
                     _cond, 
                     self._parse_update(update),
                     **options
                 )
-                
-        # hanya hapus pada record yg memiliki model yg tepat
-        # untuk menjaga terjadinya penghapusan data pada beberapa model berbeda
-        # dalam satu koleksi yg sama
-        kwargs['_metaname_'] = self._doctype.__name__
+        
+        if self._monga.config.get('nometaname') == False:
+            # hanya hapus pada record yg memiliki model yg tepat
+            # untuk menjaga terjadinya penghapusan data pada beberapa model berbeda
+            # dalam satu koleksi yg sama
+            kwargs['_metaname_'] = self._doctype.__name__
     
         # return handler
-        return RemoveUpdateHandler( self._db, self._doctype, self._parse_query(kwargs))
+        return RemoveUpdateHandler( self._monga, self._doctype, self._parse_query(kwargs))
         
         
     def insert(self, doc):
         
         if type(doc) == self._doctype:
-            doc.bind_db( self._db )
+            doc.set_monga( self._monga )
             return doc.save()
         else:
             raise SuperDocError, "Invalid doc type %s inserted to %s collection." % (doc.__class__.__name__ ,self._doctype.__name__)
@@ -195,10 +196,11 @@ class Collection:
         See _parse_query() for details.
         """
         
-        # hanya untuk record yg memiliki model yg tepat
-        # untuk menjaga terjadinya pencampuran data pada beberapa model berbeda
-        # dalam satu koleksi yg sama
-        kwargs['_metaname_'] = self._doctype.__name__
+        if self._monga.config.get('nometaname') == False:
+            # hanya untuk record yg memiliki model yg tepat
+            # untuk menjaga terjadinya pencampuran data pada beberapa model berbeda
+            # dalam satu koleksi yg sama
+            kwargs['_metaname_'] = self._doctype.__name__
         
         _cond = self._parse_query(kwargs)
         
@@ -207,9 +209,9 @@ class Collection:
         
         return SuperDocList(
             DocList(
-                self._db,
+                self._monga,
                 self._doctype, 
-                self._db[self._doctype._collection_name].find( _cond )
+                self._monga._db[self._doctype._collection_name].find( _cond )
             )
         )
         
@@ -222,15 +224,16 @@ class Collection:
         if '_id' in kwargs:
             _cond = ObjectId(str(kwargs['_id']))
         else:
-            kwargs['_metaname_'] = self._doctype.__name__
+            if self._monga.config.get('nometaname') == False:
+                kwargs['_metaname_'] = self._doctype.__name__
             _cond = self._parse_query(kwargs)
 
-        docs = self._db[self._doctype._collection_name].find_one( _cond )
+        docs = self._monga._db[self._doctype._collection_name].find_one( _cond )
 
         if docs is None:
             return None
 
-        return self._doctype( self._db, **dict(map(lambda x: (str(x[0]), x[1]), docs.items())) )
+        return self._doctype( self._monga, **dict(map(lambda x: (str(x[0]), x[1]), docs.items())) )
         
         
     def count(self, **kwargs):
@@ -241,25 +244,6 @@ class Collection:
     def ensure_index( self, key, ttl=600, unique=False ):
         '''nggo ngawe index nek perlu
         '''
-        return self._db[self._doctype._collection_name].ensure_index(key, ttl = ttl, unique = unique)
+        return self._monga._db[self._doctype._collection_name].ensure_index(key, ttl = ttl, unique = unique)
         
 
-#@TODO: finish this code bellow
-
-#class SuperCollection(Collection):
-#    
-#    def __self__(self, db, doctype, prefilter):
-#        Collection.__init__(self, db, doctype)
-#        self._filter = prefilter
-#        
-#    def new(self):
-#        raise SuperDocError, "Filtered collection not support new method"
-#    
-#    def _parse_query(self, kwargs):
-#        rv = Collection._parse_query( self, kwargs )
-#        for k, v in self._filter:
-#            rv[k] = v
-#        return rv
-#    
-
-    

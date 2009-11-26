@@ -37,7 +37,7 @@ class Tags(SuperDoc):
     
     
     def get_related_tags(self):
-        return Collection( self._db, Tags ).find(isi__in=self.isi,_id__ne=self._id)
+        return Collection( self._monga, Tags ).find(isi__in=self.isi,_id__ne=self._id)
         
     
 
@@ -1005,12 +1005,11 @@ mapper(User,
 if __name__ == '__main__':
     
     
-    monga = MongoDB('anvie','','','127.0.0.1',27017)
+    monga = MongoDB('anvie','','','127.0.0.1',27017,dict(nometaname=False))
     print 'connected:',monga.connected
     
     ## using python remote debugger
-    #from dbgp.client import brk
-    #brk()
+    #from dbgp.client import brk; brk()
     
     import unittest
     
