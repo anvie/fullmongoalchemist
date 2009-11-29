@@ -224,7 +224,7 @@ class WallPost(SuperDoc):
     via = unicode
     _creation_time = datetime.datetime
     
-    writter = relation('User',pk='_id==wuid', listmode=False)
+    writer = relation('User',pk='_id==wuid', listmode=False)
     receiver = relation('User',pk='_id==ruid', listmode=False)
     comments = relation('Comment',pk='itemid==_id', cascade='delete')
     
@@ -257,8 +257,8 @@ class Message(SuperDoc):
     _deleted_time = datetime_type
     _allow_html = bool
 
-    owner = relation('User', pk='_id==to_user_id', listmode=False)
-    sender =  relation('User', pk='_id==from_user_id', listmode=False)
+    owner = relation('User', pk='_id==to_user_id', type='one-to-one')
+    sender =  relation('User', pk='_id==from_user_id', type='one-to-one')
 
     @property
     def readed(self):
@@ -950,7 +950,7 @@ class Comment(SuperDoc):
     _creation_time = datetime_type
     _last_edited = datetime_type
     
-    writer = relation('User',pk='_id==writter_id',listmode=False)
+    writer = relation('User',pk='_id==writer_id',listmode=False)
     
     _opt = {
         'req' : ['item_id','writer_id','message','_creation_time'],
@@ -1423,10 +1423,44 @@ if __name__ == '__main__':
             
             monga._db.test.remove({})
             
-            comment = monga.col(Comment).new(message="hai test",writer_id=u"0",item_id=u"0")
+            wp = WallPost(monga,message='test',via='jakarta')
+            wp.save()
+            
+            writer = User(monga, name='anvie')
+            
+            comment = monga.col(Comment).new(message="hai test", item_id = wp._id, writer = writer)
             comment.save()
             
             self.assertNotEqual( comment._creation_time , None )
+            
+        def test_none_type(self):
+            
+            monga._db.test.remove({})
+            
+            msg = Message(monga,subject='subject-test',content='content-test')
+            msg.save()
+            
+            self.assertEqual( msg.owner, None)
+            
+            del msg
+            
+            msg = monga.col(Message).find_one( subject = 'subject-test' )
+            
+            self.assertEqual( msg.owner, None)
+            
+            user = User(name='test-user')
+            
+            msg.owner = user
+            
+            msg.save()
+            
+            del msg
+            
+            msg = monga.col(Message).find_one( subject = 'subject-test' )
+            
+            self.assertEqual( msg.owner.name, 'test-user')
+            
+            
             
         
     def main():

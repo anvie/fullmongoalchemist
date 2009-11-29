@@ -6,7 +6,7 @@ from nested import Nested
 from antypes import *
 from exc import *
 from orm import *
-from const import superdoc_reserved_words
+from const import *
 from pendingop import PendingOperation
 
 import types
@@ -87,6 +87,24 @@ class SuperDoc(Doc):
                 if type(_t) == types.NoneType:
                     continue
                 
+                if _t._type == 'one-to-one' and self._monga is not None:
+                    
+                    # lookup for existance relation in db
+                    # if not exists, then None it!
+                    rv = None
+                    try:
+                        rv = getattr(self,_t._pk[1])
+                    except:
+                        pass
+                    if rv is not None:
+                        rv = _t._pk[0] == '_id' and ObjectId(str(rv)) or str(rv)
+                        rv = self._monga._db[_t._get_rel_class()._collection_name].find({_t._pk[0]: rv}).count()
+                        
+                    if rv is None or rv == 0:
+                        setattr( self, x, None )
+                        setattr( self.__dict__['_data'], x, None )
+                        continue
+                
                 _t = _t.copy()
                 _t._parent_class = self
                 
@@ -164,7 +182,7 @@ class SuperDoc(Doc):
         self.validate()
         
         if self._monga is None:
-            raise SuperDocError, "This res not binded to database. Try to bind it first use bind_db(<db>)"
+            raise SuperDocError, "This res not binded to monga object. Try to bind it first use set_monga(<monga instance>)"
         
         if self._monga.config.get('nometaname') == False:
             # buat metaname untuk modelnya
@@ -176,7 +194,7 @@ class SuperDoc(Doc):
         Doc.save(self)
         
         if self.get_last_error() is not None:
-            return False
+            return None
         
         global RELATION_RECURSION_DEEP, MAX_RECURSION_DEEP
         
@@ -198,7 +216,7 @@ class SuperDoc(Doc):
         # refresh relation state
         self.__map_relation()
         
-        return True
+        return self
         
     
     def get_last_error(self):
@@ -254,8 +272,11 @@ class SuperDoc(Doc):
                 # reload relation
                 rel = getattr( self.__class__, x ).copy()
                 rel._parent_class = self
-                rel.reload()
-                setattr( self, x, rel )
+                rv = rel.reload()
+                if rv is not None:
+                    setattr( self, x, rel )
+                else:
+                    setattr( self, x, None ) # null it
     
     
     def __cmp__(self, other):
@@ -297,6 +318,10 @@ class SuperDoc(Doc):
         
     def __setattr__(self, k, v):
         
+        # check is keyname not in restrict_attribute_names
+        if k in restrict_attribute_names:
+            raise SuperDocError, "`%s` have restricted keyword `%s`. Please put another name." % (self.__class__.__name__,k)
+        
         if k in superdoc_reserved_words or k.startswith('_x_'):
             return Doc.__setattr__(self, k , v)
         
@@ -324,8 +349,9 @@ class SuperDoc(Doc):
             r = getattr(self.__class__, k)
             
             if r._pk[0] == '_id':
-                if v._id == None:
+                if not hasattr(v,'_id') or v._id == None:
                     # may unsaved doc, save it first
+                    v.set_monga(self._monga)
                     v.save()
                     
             elif not v._hasattr(r._pk[0]):
