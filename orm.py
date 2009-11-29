@@ -3,6 +3,7 @@ import logging
 from antypes import *
 from exc import RelationError
 from doclist import DocList, SuperDocList
+from pymongo import ASCENDING, DESCENDING
 from pymongo.objectid import ObjectId
 from const import relation_reserved_words
 from utils import parse_query
@@ -270,7 +271,7 @@ class relation(object):
         return SuperDocList (
             DocList( self._parent_class._monga,
                     rel_class,
-                    self._parent_class._monga._db[rel_class._collection_name].find( _cond )
+                    self._parent_class._monga._db[rel_class._collection_name].find( _cond ).sort('_id',ASCENDING)
                     )
             )
     
