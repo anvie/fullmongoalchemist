@@ -530,9 +530,9 @@ class ProductItem(SuperDoc):
     market_id = unicode
     name = unicode
     description = unicode
-    category_id = int
+    category_code = int
     _overview = unicode
-    currency_id = unicode
+    currency_code = int
     _price = float
     _stock = int
     auction = bool
@@ -551,8 +551,9 @@ class ProductItem(SuperDoc):
     _auto_approve_bid = bool
     _creation_time = datetime_type
     _last_updated = datetime_type
-    _last_updated_by = unicode
+    _last_updated_by = unicode  # user id
     _update_reason = unicode
+    
     _closed = bool
     _closed_permanently = bool
     _closed_time = datetime_type
@@ -569,262 +570,18 @@ class ProductItem(SuperDoc):
     
     recommenders = list
     viewers = list
+    guest_view_count = int
 
     market = relation('Market', pk='_id==market_id',listmode=False)
     bids = relation('Bidder', pk='product_item_id==_id')
     abuser = relation('Abuser', pk='product_item_id==_id')
-    currency = relation('Currency', pk='_id==currency_id')
-    comments = relation('Comment', pk='product_item_id==_id')
-    category = relation('ProductItemCategory', pk='_id==category_id',listmode=False)
-    last_editor = relation('User',pk='_last_updated_by==_id')
+    currency = relation('Currency', pk='code==currency_code',type='one-to-one')
+    comments = relation('Comment', pk='item_id==_id')
+    category = relation('ProductItemCategory', pk='code==category_code',type='one-to-one')
+    last_editor = relation('User',pk='_id==_last_updated_by',type='one-to-one')
     blacklist_user_bids = relation('BadBidder',pk='product_item_id==_id')
-    subscribers = relation('Subscription',pk='product_item_id==_id')
+    subscribers = relation('ProductItemSubscription',pk='product_item_id==_id')
 
-    @property
-    def condition_str(self):
-        '''Buat dapetin string kondisi barang
-        '''
-        return {
-            self.SECOND: _("Second"),
-            self.NEW: _("New"),
-            self.BUILTUP: _("Built up")
-        }.get(self.status,self.SECOND)
-
-    @property
-    def closed_permanently(self):
-        '''Untuk memeriksa apakah item ditutup oleh system admin dan tidak bisa dikembalikan lagi.
-        Gunakan _closed_permanently untuk akses secara langsung
-        '''
-        return self._closed_permanently and True or False
-
-    @property
-    def closed(self):
-        '''Untuk memeriksa apakah item ditutup oleh pemilik (seller), masih bisa dikembalikan lagi oleh seller
-        Gunakan _closed untuk akses secara langsung
-        '''
-        return (self._closed or self._closed_permanently) and True or False
-
-    @property
-    def deleted(self):
-        '''Untuk memeriksa apakah item telah dihapus
-        Gunakan _deleted untuk akses secara langsung
-        '''
-        return self._deleted and True or False
-
-    @property
-    def deleted_time(self):
-        '''Untuk mendapatkan waktu terformat kapan item dihapus
-        gunakan _deleted_time untuk akses secara langsung
-        '''
-        return self._deleted_time.strftime('%a, %d/%m/%Y %H:%M:%S')
-
-    @property
-    def sold(self):
-        '''Untuk memeriksa apakah produk item telah terjual atau tidak,
-        sinonim dari _sold. gunakan _sold untuk akses secara langsung
-        '''
-
-        return self._sold and True or False
-
-    @property
-    def sold_time(self):
-        '''Untuk mendapapatkan waktu terformat kapan produk item telah terjual
-        '''
-
-        return self._sold_time.strftime('%a, %d/%m/%Y %H:%M:%S')
-
-    @property
-    def suspended(self):
-        '''Untuk mengetahui apakah item di-suspend atau tidak
-        Gunakan _suspended untuk akses secara langsung
-        '''
-        return self._suspended and True or False
-
-    @property
-    def suspend_reason(self):
-        '''Untuk mendapatkan iformasi kenapa item di-suspend
-        Gunakan _suspended_info untuk akses secara langsung
-        '''
-        return self._suspended_info
-
-    @property
-    def out_of_stock(self):
-        '''Untuk memeriksa apakan item habis (out of stock)
-        Gunakan _out_of_stock untuk akses secara langsung
-        '''
-        return self._out_of_stock and True or False
-
-
-    @property
-    def permalink(self):
-        '''Get product link. Use _permalink instead for direct modification
-        '''
-        return "/%s/%d/%s" % (link_pitem_permalink_prefix,self.id, self._permalink.encode('utf-8'))
-
-    @property
-    def bid_permalink(self):
-        '''Get product bid permalink. use _permalink instead for direct modification
-        '''
-        pass
-
-    @property
-    def thumbnail_path(self):
-        '''Get thumbnail image path/url. use thumbnail instead for modification
-        '''
-
-        rv = ""
-
-        if self.pic_thumbnail:
-            rv = "%s%s" % (link_pitem_thumbnail_path,self.pic_thumbnail.encode('utf-8'))
-        else:
-            rv = "%sno_image.gif" % link_pitem_thumbnail_path
-
-        return rv
-
-    @property
-    def auction_expiration_time(self):
-
-        return self.auction_expired.strftime('%a, %d/%m/%Y %H:%M:%S')
-
-
-    @property
-    def owner_permalink(self):
-        '''Get owner home link
-        '''
-
-        return "/%s" % self.market.owner.name
-
-    @property
-    def market_permalink(self):
-        '''Get owner market link
-        '''
-
-        return "/%s/market/" % self.market.owner.name
-
-    @property
-    def expired(self):
-        import datetime
-
-        # generate auction status (expired or not)
-        if self.auction:
-            return self.auction_expired <= datetime.datetime.now()
-        return False
-
-    def stockable(self):
-        if not self._stock:
-            return False
-        if self._stock > 0:
-            return True
-        return False
-
-    @property
-    def price(self):
-        '''Synonym for _price that will automatically format currency.
-        If you want to directly access to this attribute, use _price instead.
-        '''
-
-
-        if self._price==0:
-            return "Free"
-
-        if self.currency:
-            rv = "%s %s %s" % (self.currency.sign_first, format_numeric(self._price), self.currency.sign_last)
-        else:
-            rv = _('various')
-
-        return rv
-
-    @property
-    def starter_bid(self):
-        '''Synonym for _starter_bid that will automatically format currency.
-        If you want to directly access to this attribute, use _starter_bid instead.
-        '''
-
-        rv = "%s %s %s" % (self.currency.sign_first, format_numeric(self._starter_bid), self.currency.sign_last)
-
-        return rv
-
-    @property
-    def min_bid_addition(self):
-        '''Synonym for _min_bid_addition that will automatically format currency.
-        If you want to directly access to this attribute, use _min_bid_addition instead.
-        '''
-
-        rv = "%s %s %s" % (self.currency.sign_first, format_numeric(self._min_bid_addition), self.currency.sign_last)
-
-        return rv
-
-    @property
-    def overview(self):
-        '''Synonym for _overview that will automatically format overview, to encode first for spoiler, emoticon, etc...
-        If you want to directly access to this attribute, use _overview instead.
-        '''
-
-        if self.have_overview:
-            self._overview
-
-        return _("doesn't have overview")
-    
-    @property
-    def have_overview(self):
-        
-        return (self._overview and len(self._overview)>0)
-
-
-    def short_name(self,width=100):
-        '''nggo jeneng ning format sing dipendekake + ...
-        '''
-        if len(self.name) > width:
-            return '%s...' % self.name[:width]
-        return self.name
-
-    def short_description(self, width):
-        '''Untuk mendapatkan deskripsi yang dipendekkan dan ditambah '...'
-        '''
-        if len(self.description) > width:
-            return "%s..." % self.description[:width]
-        return self.description
-
-    @property
-    def creation_time(self):
-        '''Mendapatkan informasi tanggal dan waktu pembuatan dalam format yang standar
-        '''
-        return self._creation_time.strftime('%a, %d/%m/%Y %H:%M:%S')
-
-    @property
-    def updated_time(self):
-        '''Untuk mendapatkan info kapan terakhir item diperbaharui
-        Gunakan _updated_time untuk akses secara langsung
-        '''
-        return self._last_updated_by.strftime('%a, %d/%m/%Y %H:%M:%S')
-
-    @property
-    def last_bid_updated_time(self):
-        '''Untuk mendapatkan kapan terakhir bid diperbaharui
-        Gunakan _last_bid_update untuk akses secara langsung
-        '''
-        return self._last_bid_update.strftime('%a, %d/%m/%Y %H:%M:%S')
-
-    @property
-    def comment_allowed(self):
-        '''Untuk memeriksa apakah produk item boleh dikomentari.
-        berdasarkan atribut .`_allow_comment`
-        '''
-        return self._allow_comment and True or False
-
-    @property
-    def keywords_list(self):
-        '''Mengembalikan keywords in separated list
-        '''
-        if self.keywords and len(self.keywords)>0:
-            return tuple(map(lambda x: x.strip(),self.keywords.split(',')))
-        return tuple()
-
-    @property
-    def hash(self):
-        '''Get hash, synonym for ._hash
-        '''
-        return self._hash
 
 class Viewer(SuperDoc):
     
@@ -872,47 +629,23 @@ class Recommend(SuperDoc):
     user = relation('User',pk='_id==user_id',listmode=False)
     item = relation('ProductItem',pk='_id==product_item_id',listmode=False)
 
+
 class ProductItemCategory(SuperDoc):
     
     _collection_name = 'test'
     
     name = unicode
     keywords = list
-    parent_id = unicode
+    code = int
+    parent_code = unicode
     active = bool
 
-    parent = relation('ProductItemCategory',pk='_id==parent_id',listmode=False)
-    subcategory = relation('ProductItemCategory',pk='parent_id==_id',listmode=False)
-    product_items = relation('ProductItem',pk='category_id==_id')
-
-    @property
-    def product_item_count(self):
-        return self.product_items.count()
-
-    @property
-    def url(self):
-        '''Mendapatkan url terformat alamat link ke kategori produk item
-        '''
-
-        category = self
-
-        p = []
-        while category:
-            p.append(category.name)
-            category = category.parent
-
-        p.reverse()
-
-        import urllib
-        rv = urllib.quote('/%s/category/%s/' %
-                          ( product,
-                           '/'.join(p)),
-                          '/:?&='
-                          )
-        return rv
+    parent = relation('ProductItemCategory',pk='code==parent_code',listmode=False)
+    subcategories = relation('ProductItemCategory',pk='parent_code==code',type='one-to-many')
+    product_items = relation('ProductItem',pk='category_code==code',type='one-to-many')
 
 
-class Subscription(SuperDoc):
+class ProductItemSubscription(SuperDoc):
     
     _collection_name = 'test'
     
@@ -920,8 +653,8 @@ class Subscription(SuperDoc):
     product_item_id = unicode
     active = bool
 
-    user = relation('User',pk='_id==user_id')
-    item = relation('ProductItem',pk='_id==product_item_id')
+    user = relation('User',pk='_id==user_id',type='one-to-one')
+    item = relation('ProductItem',pk='_id==product_item_id',type='one-to-one')
 
 class Currency(SuperDoc):
     
@@ -988,8 +721,8 @@ mapper(User,
        Viewer,
        Bidder,
        Recommend,
-       ProductItemCategory,
-       Subscription,
+       ProductItemCategory,       
+       ProductItemSubscription,
        Currency,
        BadBidder,
        Comment,
@@ -1459,6 +1192,18 @@ if __name__ == '__main__':
             msg = monga.col(Message).find_one( subject = 'subject-test' )
             
             self.assertEqual( msg.owner.name, 'test-user')
+            
+            pitem_category = ProductItemCategory(monga, name='Elektronik', code=38, parent_code=0, active=True)
+            pitem_category.save()
+            
+            prod = monga.col(ProductItem).new( name='test',description='test',category_code=38 )
+            prod.save()
+            
+            del prod
+            
+            prod = monga.col(ProductItem).find_one(name='test')
+            
+            self.assertEqual( prod.category.name, 'Elektronik')
             
             
             

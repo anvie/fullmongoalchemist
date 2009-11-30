@@ -96,8 +96,9 @@ class SuperDoc(Doc):
                         rv = getattr(self,_t._pk[1])
                     except:
                         pass
+                    
                     if rv is not None:
-                        rv = _t._pk[0] == '_id' and ObjectId(str(rv)) or str(rv)
+                        rv = _t._pk[0] == '_id' and ObjectId(str(rv)) or type(rv) is ObjectId and str(rv) or rv
                         rv = self._monga._db[_t._get_rel_class()._collection_name].find({_t._pk[0]: rv}).count()
                         
                     if rv is None or rv == 0:
