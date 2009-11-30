@@ -61,9 +61,18 @@ class Collection:
                 'in', 'nin', 'all', 'size', 'exists'):
                 
                 k = k[:k.find('__' + op)]
-                v = {'$%s' % op: k == '_id' and ObjectId(str(v)) or v }
                 
-            v = k == '_id' and  type(v) in (unicode,str) and ObjectId(str(v)) or v
+                if op == 'in':
+                    v = {'$%s' % op: k == '_id' and map(lambda x: ObjectId(str(x)), v) or v }
+                else:
+                    v = {'$%s' % op: k == '_id' and ObjectId(str(v)) or v }
+                
+            if k == '_id':
+                v = type(v) in (unicode,str) and ObjectId(str(v)) or v
+            else:
+                v = type(v) is ObjectId and str(v) or v
+                
+            #v = k == '_id' and  type(v) in (unicode,str) and ObjectId(str(v)) or v
             v = type(v) == list and str(v) or v
             
             # XXX dunno if we really need this?
