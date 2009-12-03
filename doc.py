@@ -148,12 +148,15 @@ class Doc(object):
         """Remove document from collection if a document id exists.
         """
         
+        rv = False
+        
         if getattr(self.__dict__['_data'], '_id') is not None:
             rv = self._monga._db[self._collection_name].remove(
                 {'_id': self.__dict__['_data']['_id']}
             )
             self.__dict__['_data']._id = None
-            return rv
+        
+        return rv
         
     def __repr__(self):
         """String representation of a document.

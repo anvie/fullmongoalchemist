@@ -351,6 +351,8 @@ class SuperDoc(Doc):
             
             if r._pk[0] == '_id':
                 if not hasattr(v,'_id') or v._id == None:
+                    if self._monga is None:
+                        raise RelationError, "cannot auto-save one-to-one relation in smart object assignment. is object not binded with monga instance?"
                     # may unsaved doc, save it first
                     v.set_monga(self._monga)
                     v.save()
@@ -420,7 +422,7 @@ class SuperDoc(Doc):
                 col_save(rela_obj)
                 
         
-        Doc.delete(self)
+        return Doc.delete(self)
     
 
     def __repr__(self):

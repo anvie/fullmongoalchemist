@@ -7,9 +7,9 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.objectid import ObjectId
 from const import relation_reserved_words
 from utils import parse_query
+from pendingop import PendingOperation
 
-import random
-import copy
+import random, copy
 
 
 mapped_user_class_docs = {}
@@ -23,7 +23,7 @@ class relation(object):
     def __init__(self,rel_class,**kwargs):
         
         
-        self.__internal_params = kwargs;
+        self._internal_params = kwargs
         
         self.__dict__['_data'] = kwargs.get('listmode') and [] or None
             
@@ -60,10 +60,6 @@ class relation(object):
             self._backref = self._backref.split(':')
             self._keyrel = self._keyrel.split(':')
             
-        elif self._type == 'dynamic':
-            
-            pass
-
         else:
             
             # no many-to-many, need PK-FK
@@ -85,17 +81,20 @@ class relation(object):
         if self._type != 'one-to-one':
             self._order = kwargs.get('order')
         
-        self.cascade = kwargs.get('cascade', None)
+        self._cascade = kwargs.get('cascade', None)
         self._parent_class = None
         
         self.__dict__['_deleted_item'] = []
         self.__dict__['_cached_repr'] = []
         self.__dict__['_new_data'] = []
         
+        # execution stack after saving operation
+        self._post_save = PendingOperation(self)
+        
     def copy(self):
         '''Create new copy of me
         '''
-        return relation(self._rel_class_name, **self.__internal_params)
+        return relation(self._rel_class_name, **self._internal_params)
 
     def __repr__(self):
         self.refresh()
@@ -425,6 +424,9 @@ class relation(object):
             
         else:
             # one-to-one
+            
+            #self._post_save.apply_op_all()
+            
             if self.__dict__['_data']:
                 self.__dict__['_data'].save()
         
@@ -446,7 +448,7 @@ class relation(object):
             #raise RelationError, "cascade action only support for listmode relation"
             return False
         
-        if self.cascade != 'delete':
+        if self._cascade != 'delete':
             #raise RelationError, "not implemented with cascade support"
             return False
         
@@ -516,6 +518,21 @@ class relation(object):
             return None
         
         return getattr( self.__dict__['_data'], key  )
+        
+    def __setattr__(self, key, value):
+        
+        if key in relation_reserved_words:
+            return object.__setattr__( self, key, value )
+        
+        if self._type != 'one-to-one':
+            return object.__setattr__( self, key, value )
+            #raise AttributeError, "%s instance has no attribute '%s'" % (self.__class__.__name__, key)
+        
+        self.refresh()
+        
+        setattr( self.__dict__['_data'], key, value )
+        
+        #self._post_save.add_op(self.__dict__['_data'], action='setattr', key=key, value=value )
         
         
     def __delitem__(self, k):
