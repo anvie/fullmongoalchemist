@@ -175,9 +175,14 @@ class Collection:
                 
                 _cond = '_id' in update and ObjectId(str(update['_id'])) or self.__query
                 
+                _update_param = self._parse_update(update)
+                
+                if self._echo is True:
+                    print "update:", _update_param
+                
                 return self._monga._db[self._doctype._collection_name].update(
                     _cond, 
-                    self._parse_update(update),
+                    _update_param,
                     **options
                 )
         
@@ -188,7 +193,14 @@ class Collection:
             kwargs['_metaname_'] = self._doctype.__name__
     
         # return handler
-        return RemoveUpdateHandler( self._monga, self._doctype, self._parse_query(kwargs))
+        _query_param = self._parse_query(kwargs)
+        
+        if self._echo is True:
+            print "query:", _query_param
+        
+        rv = RemoveUpdateHandler( self._monga, self._doctype, _query_param)
+        rv._echo = self._echo
+        return rv
         
         
     def insert(self, doc):
