@@ -9,7 +9,8 @@ class MongoDB(object):
     '''Interface adapter buat interaksi dengan Mongo DB
     '''
     
-    def __init__(self,db_name,
+    def __init__(self,
+                 db_name,
                  user_name,
                  user_pass,
                  host,
@@ -27,21 +28,34 @@ class MongoDB(object):
         
         self._connected=False
         
-        try:
-            self._cn = Connection(host,port)
-            self._db = self._cn[db_name]
-        except Exception, e:
-            print 'ERROR: ', e
-            self._last_error = e
-            return
+        self.db_name = db_name
+        self.host = host
+        self.port = port
         
-        self._connected = True
+        self._connected = self.connect()
         
         for x in ('nometaname','notypeknown'):
             if x not in config:
                 config[x] = False
         
         self.config = config
+        
+        
+    def connect(self):
+        
+        try:
+            self._cn = Connection(self.host,self.port)
+            self._db = self._cn[self.db_name]
+        except Exception, e:
+            print 'ERROR: ', e
+            self._last_error = e
+            return False
+        return True
+        
+        
+    def reconnect(self):
+        self._connected = self.connect()
+        return self._connected
         
     @property
     def connected(self):

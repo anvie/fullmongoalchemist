@@ -519,6 +519,12 @@ class relation(object):
         
         return getattr( self.__dict__['_data'], key  )
         
+    def __cmp__(self,other):
+        if self._type == 'one-to-one':
+            if other is None: return -1
+            return cmp(self._id,other._id)
+        return -1
+        
     def __setattr__(self, key, value):
         
         if key in relation_reserved_words:
