@@ -1128,6 +1128,11 @@ if __name__ == '__main__':
             self.assertEqual( rv.count(), 2 )
             self.assertEqual( rv.all()[0].name, 'c5' )
             
+            # test clear all
+            self.assertNotEqual(pa.childs.count(),0)
+            pa.childs.clear()
+            self.assertEqual(pa.childs.count(),0)
+            
         def test_list_dict(self):
             
             monga._db.test.remove({})

@@ -330,6 +330,17 @@ class relation(object):
             x.remove( data._id )
             return setattr( self._parent_class.__dict__['_data'], self._keyrel[0], x )
         return False
+    
+    
+    def clear(self):
+        '''untuk menghapus semua item yang terelasi.
+        hanya berlaku untuk realsi tipe one-to-many aja.
+        '''
+        
+        if self._type != 'one-to-many':
+            raise RelationError,"this method only for one-to-many relation type"
+        
+        return self._parent_class._monga._db[self.rel_class._collection_name].remove({})
 
 
     def _save(self):
