@@ -1,5 +1,6 @@
 from pymongo.dbref import DBRef
 from pymongo.objectid import ObjectId
+from pymongo.code import Code
 from superdoc import SuperDoc
 from doclist import DocList, SuperDocList
 from exc import SuperDocError
@@ -267,4 +268,13 @@ class Collection:
         '''
         return self._monga._db[self._doctype._collection_name].ensure_index(key, ttl = ttl, unique = unique)
         
-
+        
+    def map_reduce( self, map_func, reduce_func ):
+        
+        map_func = Code(map_func.replace('\n',''))
+        reduce_func = Code(reduce_func.replace('\n',''))
+        
+        return self._monga._db[self._doctype._collection_name].map_reduce(map_func, reduce_func)
+        
+        
+        

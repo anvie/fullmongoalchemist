@@ -1210,6 +1210,68 @@ if __name__ == '__main__':
             
             self.assertEqual( prod.category.name, 'Elektronik')
             
+        def test_map_reduce(self):
+            '''about to test map reduce functionality.
+            if your mongod become crash, please update your mongo to version >= 1.2.0,
+            this test work fine in 1.2.0
+            '''
+            
+            # from dbgp.client import brk; brk()
+            
+            monga._db.test.remove({})
+            
+            class Item(SuperDoc):
+                _collection_name = 'test'
+                
+                name = unicode
+                tags = list
+                
+            monga.col(Item).insert(Item(name='obin',tags=['keren','cool','nerd']))
+            monga.col(Item).insert(Item(name='imam',tags=['keren','funny','brother']))
+            monga.col(Item).insert(Item(name='nafid',tags=['brother','funny','notbad']))
+            monga.col(Item).insert(Item(name='uton',tags=['smart','cool','notbad']))
+            monga.col(Item).insert(Item(name='alfen',tags=['fat','nocool','huge']))
+            
+            map_ = '''function () {
+              this.tags.forEach(function(z) {
+                emit(z, 1 );
+              });
+            }'''
+            
+            reduce_ = '''function (key, values) {
+              var total = 0;
+              for (var i = 0; i < values.length; i++) {
+                total += values[i];
+              }
+              return total;
+            }'''
+
+            rv = monga.col(Item).map_reduce( map_, reduce_ )
+            
+            true_result = [
+                {u'_id': u'brother', u'value': 2.0},
+                {u'_id': u'cool', u'value': 2.0},
+                {u'_id': u'fat', u'value': 1.0},
+                {u'_id': u'funny', u'value': 2.0},
+                {u'_id': u'huge', u'value': 1.0},
+                {u'_id': u'keren', u'value': 2.0},
+                {u'_id': u'nerd', u'value': 1.0},
+                {u'_id': u'nocool', u'value': 1.0},
+                {u'_id': u'notbad', u'value': 2.0},
+                {u'_id': u'smart', u'value': 1.0}
+            ]
+            
+            cr = rv.find()
+            
+            for i, x in enumerate(cr):
+                self.assertEqual( x, true_result[i] )
+                
+            monga._db.drop_collection(rv.result)
+            
+
+            
+            
+            
             
             
         
