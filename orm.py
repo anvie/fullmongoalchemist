@@ -466,11 +466,12 @@ class relation(object):
         if self._type == 'many-to-many':
             raise RelationError, "Many-to-many relation not support cascade"
             
-        _datas = self.__dict__['_cached_repr']
+        self.reload()
+        _datas = self.__dict__['_data']
         
-        for data in _datas:
-            
-            data.delete()
+        if _datas is not None:
+            for data in _datas:
+                data.delete()
             
         del self.__dict__['_cached_repr'][:]
         return True

@@ -695,7 +695,7 @@ class Comment(SuperDoc):
 class parent(SuperDoc):
     _collection_name = 'test'
 
-    childs = relation('child',pk='parent_id==_id',type='one-to-many')
+    childs = relation('child',pk='parent_id==_id',type='one-to-many',cascade='delete')
 
 class child(SuperDoc):
     _collection_name = 'test'
@@ -1269,9 +1269,43 @@ if __name__ == '__main__':
             monga._db.drop_collection(rv.result)
             
 
+        def test_cascade(self):
             
             
+            monga._db.test.remove({})
             
+            obin = parent(
+                monga,
+                name = 'obin'
+            )
+            
+            obin.save()
+            
+            # from dbgp.client import brk; brk()
+            anvie = child(name='anvie')
+            anvie2 = child(name='anvie2')
+            anvie3 = child(name='anvie3')
+            
+            
+            obin.childs.append(anvie)
+            obin.childs.append(anvie2)
+            obin.childs.append(anvie3)
+            
+            obin.save()
+            
+            self.assertEqual(obin.childs.count(), 3)
+            del obin.childs[-1]
+            obin.save()
+            self.assertEqual(obin.childs.count(), 2)
+            self.assertEqual(obin.childs[0].name,'anvie')
+            self.assertEqual(obin.childs[1].name,'anvie2')
+            
+            self.assertEqual(monga.col(child).find(name='anvie').count(),1)
+            
+            obin.delete()
+            
+            self.assertEqual(monga.col(child).find(name='anvie').count(),0)
+            self.assertEqual(monga.col(child).find(name='anvie2').count(),0)
             
             
         
