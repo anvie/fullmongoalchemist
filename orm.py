@@ -340,7 +340,11 @@ class relation(object):
         if self._type != 'one-to-many':
             raise RelationError,"this method only for one-to-many relation type"
         
-        return self._parent_class._monga._db[self.rel_class._collection_name].remove({})
+        rv = self._parent_class._monga._db[self.rel_class._collection_name].remove({})
+        
+        self._update_hash()
+        
+        return rv
 
 
     def _save(self):
