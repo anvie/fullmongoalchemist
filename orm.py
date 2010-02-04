@@ -184,24 +184,31 @@ class relation(object):
 
         if self.listmode:
             
-            self.__dict__['_data'] = SuperDocList (
-                            DocList( self._parent_class._monga,
-                                    rel_class,
-                                    self._parent_class._monga._db[rel_class._collection_name].find( _cond )
-                                    )
-                                         )
+            rv = SuperDocList (
+                DocList( self._parent_class._monga,
+                        rel_class,
+                        self._parent_class._monga._db[rel_class._collection_name].find( _cond )
+                        )
+                )
             
             # alokasikan null memory sebesar jumlah item pada db
             if self._order is not None:
-                cached_data = self.__dict__['_data'].sort( **self._order ).limit(10).all() # maximum to 10...
+                cached_data = rv.sort( **self._order ).limit(10).all() # maximum to 10...
             else:
-                cached_data = self.__dict__['_data'].sort(_id=1).limit(10).all() # maximum to 10...
+                cached_data = rv.sort(_id=1).limit(10).all() # maximum to 10...
                 
-            if self.__dict__['_data'].count() > 10:
-                cached_data += [ None for x in xrange(0,self.__dict__['_data'].count() - 10) ]
+            if rv.count() > 10:
+                cached_data += [ None for x in xrange(0,rv.count() - 10) ]
             
             self.__dict__['_cached_repr'] = cached_data
-            self.__dict__['_data'] = self.__dict__['_data'].tofirst()
+            #self.__dict__['_data'] = rv.limit(-1).tofirst()
+            
+            self.__dict__['_data'] = SuperDocList (
+                DocList( self._parent_class._monga,
+                        rel_class,
+                        self._parent_class._monga._db[rel_class._collection_name].find( _cond )
+                        )
+                )
             
             return self.__dict__['_data']
             

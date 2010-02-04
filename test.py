@@ -1302,6 +1302,8 @@ if __name__ == '__main__':
             
             self.assertEqual(monga.col(child).find(name='anvie').count(),1)
             
+            #from dbgp.client import brk; brk()
+            
             obin.delete()
             
             self.assertEqual(monga.col(child).find(name='anvie').count(),0)
