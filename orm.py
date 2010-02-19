@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 class relation(object):
     
-    def __init__(self,rel_class,**kwargs):
+    def __init__(self,rel_class=None,**kwargs):
         
         
         self._internal_params = kwargs
@@ -33,6 +33,7 @@ class relation(object):
         
         self._type = kwargs.get('type')
         
+        
         if self._type is None:
             self.listmode = kwargs.get('listmode')
             if self.listmode is None:
@@ -41,7 +42,7 @@ class relation(object):
             else:
                 self._type = self.listmode == True and 'one-to-many' or 'one-to-one'
         else:
-            self.listmode = self._type != 'one-to-one'
+            self.listmode = self._type not in ('one-to-one','many-to-one')
 
         if self._type == 'many-to-many':
             
@@ -60,7 +61,9 @@ class relation(object):
             self._backref = self._backref.split(':')
             self._keyrel = self._keyrel.split(':')
             
-        else:
+        elif self._type in ('one-to-many','one-to-one'):
+            
+            self._backref = kwargs.get('backref')
             
             # no many-to-many, need PK-FK
         
@@ -76,6 +79,17 @@ class relation(object):
             else:
                 # use pk
                 self._cond = and_(**{self._pk[0]:':%s' % self._pk[1]})
+                
+        elif self._type == 'many-to-one':
+            
+            rv = kwargs.get('pk')
+            if not rv:
+                raise RelationError, "many-to-one relation need pk"
+            
+            self._pk = rv
+            self._cond = and_( _id = ':%s' % rv )
+            
+            
                 
                 
         if self._type != 'one-to-one':
@@ -153,7 +167,7 @@ class relation(object):
         
         if rv and type(rv) == dict:
 
-            if self._parent_class._monga.config.get('nometaname') == False:
+            if self._parent_class._monga.config.get('nometaname') == False and self._type != 'many-to-one':
                 # uses metaname
                 rv['_metaname_'] = self._rel_class_name
             
@@ -292,6 +306,9 @@ class relation(object):
     def _get_rel_class(self):
         global mapped_user_class_docs
         if not hasattr(self, 'rel_class'):
+            if self._type == 'many-to-one':
+                self._rel_class_name = str(getattr(self._parent_class.__dict__['_data'], '__meta_pcname__'))
+            
             self.rel_class = type(self._rel_class_name) == str and mapped_user_class_docs[self._rel_class_name] or self._rel_class_name
         return self.rel_class
 
@@ -313,14 +330,21 @@ class relation(object):
         if not self._is_data_related(data):
             raise RelationError, "data not related: %s <=> %s" % (self._rel_class_name,type(data))
             
-            
         if self._type in ('one-to-many','one-to-one') and self._pk[1] != '_id' and not self._parent_class.__dict__['_data']._hasattr(self._pk[1]):
             raise RelationError, "%s has no attribute %s" % (self._parent_class.__class__.__name__, self._pk[1])
             
-        # setting pk fk if possible, before validation
-        #v = getattr( self._parent_class, self._pk[1] )
-        #setattr( data, self._pk[0], type(v) is ObjectId and str(v) or v )
-        
+        # untuk data child berupa relasi many-to-one
+        if self._type == 'one-to-many' and self._backref is not None:
+            
+            t = getattr( data, self._backref )
+            
+            if t is not None:
+                if t._type == 'many-to-one':
+                    
+                    # tambahkan record tambahan buat meta parent class name
+                    # berfungsi untuk parent class lookup di relasi model many-to-one
+                    data.__meta_pcname__ = self._parent_class.__class__.__name__
+            
         data.set_monga( self._parent_class._monga )
         
         self.__dict__['_new_data'].append(data)
@@ -435,7 +459,16 @@ class relation(object):
                         getattr( data.__dict__['_data'], self._backref[0] ).append( key )
                     
                     # update child relation
-                    data.__dict__['_data']._id = self._parent_class._monga._db[self._parent_class._collection_name].save(data.to_dict())
+                    data.__dict__['_data']._id = \
+                        self._parent_class._monga._db[self._parent_class._collection_name].save(data.to_dict())
+                    
+                elif self._type == 'many-to-one':
+                    
+                    #tambah meta name buat lookup parent relation class
+                    data.__dict__['_data'].__meta_pcname__ = pcname
+                    
+                    data.__dict__['_data']._id = \
+                        self._parent_class._monga._db[self._parent_class._collection_name].save(data.to_dict())
                     
                     
             if self._type == 'many-to-many':
@@ -591,8 +624,11 @@ class RelationDataType(object):
         self.val = val
         
     def __repr__(self):
-        if self.val._type in ('one-to-many','one-to-one'):
+        t = self.val._type
+        if t in ('one-to-many','one-to-one'):
             return "<relation to [%s pk(%s==%s)]>" % (self.val._rel_class_name,self.val._pk[0],self.val._pk[1])
+        elif t == 'many-to-one':
+            return "<relation to [many-to-one]>"
         else:
             return "<relation to [many-to-many: %s]>" % self.val._rel_class_name
     

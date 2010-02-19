@@ -697,12 +697,26 @@ class parent(SuperDoc):
 
     childs = relation('child',pk='parent_id==_id',type='one-to-many',cascade='delete')
 
+# untuk test many-to-one
+class another_parent1(SuperDoc):
+    _collection_name = 'test'
+    
+    
+    childs = relation('child',pk='another_parent_id==_id',type='one-to-many',cascade='delete', backref = 'another_parent')
+
+class another_parent2(SuperDoc):
+    _collection_name = 'test'
+    
+    childs = relation('child',pk='another_parent_id==_id',type='one-to-many',cascade='delete', backref = 'another_parent')
+
 class child(SuperDoc):
     _collection_name = 'test'
     
     parent_id = unicode
+    another_parent_id = unicode
     
     parent = relation('child',pk='_id==parent_id',type='one-to-one')
+    another_parent = relation(pk='another_parent_id',type='many-to-one')
     
 
 mapper(User,
@@ -731,7 +745,9 @@ mapper(User,
        PostFlip,
        TagFlip,
        parent,
-       child
+       child,
+       another_parent1,
+       another_parent2
        )
 
 
@@ -1274,6 +1290,8 @@ if __name__ == '__main__':
             
             monga._db.test.remove({})
             
+            #from dbgp.client import brk; brk()
+            
             obin = parent(
                 monga,
                 name = 'obin'
@@ -1290,6 +1308,7 @@ if __name__ == '__main__':
             obin.childs.append(anvie)
             obin.childs.append(anvie2)
             obin.childs.append(anvie3)
+            
             
             obin.save()
             
@@ -1308,6 +1327,43 @@ if __name__ == '__main__':
             
             self.assertEqual(monga.col(child).find(name='anvie').count(),0)
             self.assertEqual(monga.col(child).find(name='anvie2').count(),0)
+            
+            
+        def test_many_to_one(self):
+            
+                monga._db.test.remove({})
+                
+                
+                parent1 = another_parent1(
+                    monga,
+                    name = 'parent1'
+                )
+                
+                parent2 = another_parent2(
+                    monga,
+                    name = 'parent2'
+                )
+                
+                
+                anvie1 = child(name='anvie1')
+                anvie2 = child(name='anvie2')
+                
+                
+                parent1.childs.append(anvie1)
+                parent2.childs.append(anvie2)
+                
+                parent1.save()
+                parent2.save()
+                
+                
+                self.assertEqual( anvie1.another_parent.name, 'parent1' )
+                self.assertEqual( anvie2.another_parent.name, 'parent2' )
+                
+                
+                
+            
+            
+            
             
             
         

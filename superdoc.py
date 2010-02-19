@@ -233,6 +233,12 @@ class SuperDoc(Doc):
             
             t = getattr( self, x )
             
+            if t is None: continue
+            
+            # jangan save many-to-one relation
+            if t._type == 'many-to-one':
+                continue
+            
             if hasattr(t, attr):
             
                 getattr(t,attr)( *args, **kwargs )
@@ -263,7 +269,7 @@ class SuperDoc(Doc):
         for x in filter( lambda x: type( getattr(self.__class__,x) ) == relation , dir(self.__class__) ):
             
             rel = getattr( self, x )
-            if rel is not None:
+            if rel is not None and rel._type != 'many-to-one':
                 rv = rel.reload()
                 if rel._type == 'one-to-one':
                     if type(rv) == types.NoneType:
@@ -273,11 +279,13 @@ class SuperDoc(Doc):
                 # reload relation
                 rel = getattr( self.__class__, x ).copy()
                 rel._parent_class = self
-                rv = rel.reload()
-                if rv is not None:
-                    setattr( self, x, rel )
-                else:
-                    setattr( self, x, None ) # null it
+                
+                if rel._type != 'many-to-one':
+                    rv = rel.reload()
+                    if rv is not None:
+                        setattr( self, x, rel )
+                    else:
+                        setattr( self, x, None ) # null it
     
     
     def __cmp__(self, other):

@@ -37,6 +37,7 @@ class Doc(object):
             return obj
         
         return object.__getattribute__(self, key)
+
         
 
     def __setattr__(self, key, value):
@@ -86,7 +87,8 @@ class Doc(object):
         d = {}
         for k in dir(obj):
             # ignore values with a beginning underscore. these are private.
-            if k.startswith('__'): continue
+            if k.startswith('__') and k != '__meta_pcname__':
+                continue
     
             # get value an type
             value = getattr(obj, k)
