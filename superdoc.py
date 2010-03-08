@@ -49,6 +49,21 @@ class SuperDoc(Doc):
                         raise SuperDocError, "`%s` is strict model. Cannot assign entryname for `%s`" % ( self.__class__.__name__,k )
         
         for k, v in datas.iteritems():
+            
+            # except bad options types
+            try:
+                ov = getattr(self.__class__, k)
+            except:
+                ov = None
+            if ov and type(ov) is options:
+                if v not in ov:
+                    raise SuperDocError, "`%s` cannot assign entryname for `%s = %s` invalid options, can only: `%s`" % (
+                        self.__class__.__name__,
+                        k,
+                        v,
+                        str(', '.join(ov))
+                    )
+            
             self.__setattr__( k, v )
             
 

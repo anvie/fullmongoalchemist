@@ -710,10 +710,12 @@ class another_parent2(SuperDoc):
     childs = relation('child',pk='another_parent_id==_id',type='one-to-many',cascade='delete', backref = 'another_parent')
 
 class child(SuperDoc):
+    
     _collection_name = 'test'
     
     parent_id = unicode
     another_parent_id = unicode
+    gender = options("pria","wanita")
     
     parent = relation('child',pk='_id==parent_id',type='one-to-one')
     another_parent = relation(pk='another_parent_id',type='many-to-one')
@@ -1359,7 +1361,21 @@ if __name__ == '__main__':
                 self.assertEqual( anvie1.another_parent.name, 'parent1' )
                 self.assertEqual( anvie2.another_parent.name, 'parent2' )
                 
+        def test_options_type(self):
+            
+            monga._db.test.remove({})
+            
+            #from dbgp.client import brk; brk()
+            
+            anvie = child(name="anvie", gender="wanita")
+            try:
+                anvie = child(name="anvie", gender="laki-laki")
+            except:
+                anvie = None
                 
+            self.assertEqual( anvie, None )
+            
+            anvie = child(name="anvie", gender="pria")
                 
             
             

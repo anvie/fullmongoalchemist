@@ -107,6 +107,12 @@ class rawcond(ConditionQuery):
     def __repr__(self):
         return '<or_ ConditionQuery [%s]>' % self.where_value
     
+
+class options(list):
+    
+    def __init__(self,*args):
+        list.__init__(self,args)
+
     
 def dictarg(data):
     return dict(map(lambda x: (str(x[0]), x[1]), data.items()))
