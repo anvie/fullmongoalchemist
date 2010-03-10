@@ -690,7 +690,6 @@ class Comment(SuperDoc):
         'default' : {'_creation_time':datetime.datetime.now}
     }
     
-    
 
 class parent(SuperDoc):
     _collection_name = 'test'
@@ -708,6 +707,8 @@ class another_parent2(SuperDoc):
     _collection_name = 'test'
     
     childs = relation('child',pk='another_parent_id==_id',type='one-to-many',cascade='delete', backref = 'another_parent')
+
+
 
 class child(SuperDoc):
     
@@ -1375,8 +1376,12 @@ if __name__ == '__main__':
                 
             self.assertEqual( anvie, None )
             
-            anvie = child(name="anvie", gender="pria")
-                
+            anvie = child(monga,name="anvie", gender="pria")
+            
+            anvie.save()
+            
+            self.assertEqual( anvie.gender, "pria" )
+            
             
             
             

@@ -4,6 +4,12 @@ from exc import RelationError
 from utils import parse_query
 from pymongo.binary import Binary
 
+__all__ = [
+    'ObjectId', 'Binary', 'RelationError',
+    'options', 'ConditionQuery', 'or_', 'and_',
+    'rawcond', 'dictarg'
+]
+
 class ConditionQuery(object):
     
     def __init__(self,**conds):
@@ -110,8 +116,20 @@ class rawcond(ConditionQuery):
 
 class options(list):
     
+    def __call__(self, value):
+        '''berguna untuk mengisi data dan konversi
+        '''
+        if value not in self:
+            raise TypeError, "Cannot assign value `%s`. Accept only `%s`" % (value, str(self))
+        self.value = value
+        return value
+    
     def __init__(self,*args):
         list.__init__(self,args)
+        self.value = None
+        
+    def __repr__(self):
+        return str(self.value)
 
     
 def dictarg(data):

@@ -47,27 +47,10 @@ class SuperDoc(Doc):
                 for k in datas.keys():
                     if not self.__has_entryname(k):
                         raise SuperDocError, "`%s` is strict model. Cannot assign entryname for `%s`" % ( self.__class__.__name__,k )
-        
-        for k, v in datas.iteritems():
-            
-            # except bad options types
-            try:
-                ov = getattr(self.__class__, k)
-            except:
-                ov = None
-            if ov and type(ov) is options:
-                if v not in ov:
-                    raise SuperDocError, "`%s` cannot assign entryname for `%s = %s` invalid options, can only: `%s`" % (
-                        self.__class__.__name__,
-                        k,
-                        v,
-                        str(', '.join(ov))
-                    )
-            
-            self.__setattr__( k, v )
-            
 
         self.__sanitize()
+        self.__assign_attirbutes( datas )
+        
         
         if _has_opt:
             if not self._saved() and self._opt.has_key('default'):
@@ -142,10 +125,29 @@ class SuperDoc(Doc):
                     
                 elif o == dict and sot != Nested:
                     setattr( self.__dict__['_data'], sx, Nested() )
-        
 
         self.__dict__['_modified_childs'] = []
         
+        
+    def __assign_attirbutes(self, datas):
+        for k, v in datas.iteritems():
+            
+            # except bad options types
+            try:
+                ov = getattr(self.__class__, k)
+            except:
+                ov = None
+            if ov and type(ov) is options:
+                if v not in ov:
+                    raise SuperDocError, "`%s` cannot assign entryname for `%s = %s` invalid options, can only: `%s`" % (
+                        self.__class__.__name__,
+                        k,
+                        v,
+                        str(', '.join([str(x) for x in ov]))
+                    )
+            
+            self.__setattr__( k, v )
+            
         
     def set_monga(self, _monga):
         self._monga = _monga
@@ -153,7 +155,7 @@ class SuperDoc(Doc):
     def __sanitize(self):
         
         # map class atribute based user definition to _data container collection
-        _attrs = filter( lambda x: type(getattr(self.__class__,x)) == types.TypeType and x not in ['__class__'], dir(self.__class__) )
+        _attrs = filter( lambda x: type(getattr(self.__class__,x)) in (types.TypeType, options) and x not in ['__class__'], dir(self.__class__) )
 
         for x in _attrs:
 
@@ -337,7 +339,7 @@ class SuperDoc(Doc):
         # kembalikan True apabila berupa meta name khusus
         if name in self.__dict__['_reserved_entry_name']: return True
         
-        return (hasattr(self.__class__, name) and type(getattr(self.__class__, name)) in [relation, types.TypeType]) or hasattr(self.__class__, '_x_%s' % name)
+        return (hasattr(self.__class__, name) and type(getattr(self.__class__, name)) in [relation, types.TypeType, options]) or hasattr(self.__class__, '_x_%s' % name)
         
         
     def __setattr__(self, k, v):
