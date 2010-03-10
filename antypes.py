@@ -127,9 +127,6 @@ class options(list):
     def __init__(self,*args):
         list.__init__(self,args)
         self.value = None
-        
-    def __repr__(self):
-        return str(self.value)
 
     
 def dictarg(data):
