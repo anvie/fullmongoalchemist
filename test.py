@@ -61,17 +61,6 @@ class User(SuperDoc):
 
     _collection_name = 'test'
     
-    #''' User authority definition
-    #1=admin, 2=operator, 3=inspector, 4=corporate user, 5=delivery operator, 6=registered, 7 = guest
-    #'''
-    USER_POS_ADMIN = 1
-    USER_POS_OPERATOR = 2
-    USER_POS_INSPECTOR = 3
-    USER_POS_CORPORATE = 4
-    USER_POS_DELIVER_OPERATOR = 5
-    USER_POS_REGISTERED = 6
-    USER_POS_GUEST = 7
-    
     name = unicode
     first_name = unicode
     last_name = unicode
@@ -109,109 +98,7 @@ class User(SuperDoc):
         'default' : dict(name='', _creation_time=datetime.datetime.utcnow),
         'strict' : True
     }
-    
-    @property
-    def creation_time(self):
-        return self._creation_time and self._creation_time.strftime("%a, %d/%m/%Y %H:%M:%S %p") or 'unknown'
-        
-    @property
-    def join_time(self):
-        return self.creation_time
-    
-    def get_token(self):
-       import hashlib
-       utoken = hashlib.sha1('%s-x-%s-%s' % (self._id, self.name, str(self._creation_time))).hexdigest()
-       return utoken
 
-    @property
-    def have_market(self):
-        return self.market and True or False
-
-    @property
-    def full_name(self):
-        '''Get formated user name
-        '''
-        rv = self.first_name
-        if self.last_name:
-            rv = '%s %s' % (rv, self.last_name)
-        return rv
-
-    @property
-    def last_login_time(self):
-        '''Formated date for user last login, use _last_login instead for get raw data
-        '''
-        if self._last_login_time:
-            return self._last_login_time.strftime('%a, %d/%m/%Y %H:%M:%S')
-        return None
-
-    @property
-    def profile_link(self):
-        '''Mendapatkan alamat link profile dari pengguna
-        contoh: http://ansvia.com/user
-        '''
-        return "/%s" % self.name
-
-    @property
-    def avatar_image_link(self):
-        '''Mendapatkan alamat gambar avatar
-        '''
-        pass
-        
-    @property
-    def have_avatar(self):
-        return self.pic_avatar and True or False
-
-    @property
-    def join_date(self):
-        '''Mendapatkan waktu join terformat
-        Gunakan _join_time untuk akses secara langsung
-        '''
-        return self._creation_time.strftime("%d/%m/%Y")
-
-    @property
-    def hash(self):
-        '''Get hash for caching perform
-        '''
-        return self._hash
-
-    @property
-    def authority(self):
-        return self._authority
-
-    @property
-    def authority_name(self):
-        return {
-            self.USER_POS_ADMIN: "Admin",
-            self.USER_POS_OPERATOR: "Operator",
-            self.USER_POS_INSPECTOR: "Inspector",
-            self.USER_POS_CORPORATE: "Corporate user",
-            self.USER_POS_DELIVER_OPERATOR: "Delivery operator",
-            self.USER_POS_REGISTERED: "Registered user",
-            self.USER_POS_GUEST: "Guest"
-        }.get(self._authority, (lambda: "Unknown"))()
-
-    @property
-    def banned(self):
-        return (self._banned and (datetime.datetime.now() < self._banned_expiration_time)) and True or False
-
-    @property
-    def banned_type(self):
-        return self._banned_type
-
-    @property
-    def banned_expiration_time(self):
-        '''Mendapatkan waktu kadaluarsa terformat user yang dibanned
-        '''
-        return self._banned_expiration_time and self._banned_expiration_time.strftime("%a, %d/%m/%Y %H:%M:%S") or 'unknown'
-
-    @property
-    def reputation_level(self):
-        return self._reputation_level
-
-    @property
-    def warning_level(self):
-        return self._warning_level
-    
 
 class WallPost(SuperDoc):
 
@@ -234,13 +121,7 @@ class WallPost(SuperDoc):
         'strict' : True
     }
     
-    @property
-    def creation_time(self):
-        return self._creation_time and self._creation_time.strftime("%a, %d/%m/%Y %H:%M:%S %p") or 'unknown'
-   
-    @property
-    def formatted_message(self):
-        return self.message
+
         
 class Message(SuperDoc):
     
@@ -407,24 +288,6 @@ class Market(SuperDoc):
     testi = relation('Testimonial',pk='market_id==_id')
 
 
-    @property
-    def permalink(self):
-        '''Untuk mendapatkan url terformat alamat market
-        '''
-
-        return '/%s/market' % self.owner.name
-    
-    @property
-    def first_time_add_product_item(self):
-        return self._first_time_add_product_item and True or False
-
-    def short_description(self,width=100):
-        '''Untuk mendapatkan deskripsi yang dipendekkan dan ditambah '...'
-        '''
-        if len(self.description) > width:
-            return "%s..." % self.description[:width]
-        return self.description
-
 
 class MarketPost(SuperDoc):
     
@@ -447,37 +310,7 @@ class MarketPost(SuperDoc):
     author = relation('User', pk='poster_user_id==_id',listmode=False)
     comments = relation('Comment', pk='itemid==_id')
 
-    @property
-    def content(self):
-        '''Synonym for _content, get formated (encoded) content text,
-        format includes encode like spoiler, emoticon, etc
-        '''
-        return self._content
 
-    @property
-    def editable_content(self):
-        '''Show content in original editing format purpose
-        '''
-        return self._content
-
-    @property
-    def permalink(self):
-        import re
-        rv = re.sub(r'\W+', '-', self.title).strip('-')
-        return "/%s/market/post/%d/%s.html" % (self.market.owner.name,self.id,rv)
-
-
-    @property
-    def published(self):
-        '''Untuk mendapatkan info apakah postingan telah
-        dipublish atau tidak dalam mode terformat
-        '''
-
-        return self._published and _("Yes") or _("No")
-
-    @property
-    def comment_allowed(self):
-        return self._allow_comment
 
 class Testimonial(SuperDoc):
     
