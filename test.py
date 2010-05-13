@@ -554,6 +554,44 @@ class child(SuperDoc):
     parent = relation('child',pk='_id==parent_id',type='one-to-one')
     another_parent = relation(pk='another_parent_id',type='many-to-one')
     
+    
+#
+# test inheritance
+#
+class Employee(SuperDoc):
+    
+    _collection_name = "test"
+    
+    name = unicode
+    age = int
+    
+    def get_sallary(self):
+        return self.sallary
+    
+class Programmer(Employee):
+    
+    sallary = 8000000
+    
+    division = unicode
+    
+    tools = relation("Resource",pk="user_id==_id",type="one-to-many")
+    
+    
+class Marketing(Employee):
+    
+    sallary = 5000000
+    
+class Resource(SuperDoc):
+    
+    _collection_name = "test"
+    
+    user_id = unicode
+    name = unicode
+    price = long
+    
+    
+    owner = relation("Programmer",pk="_id==user_id",type="one-to-one")
+    
 
 mapper(User,
        WallPost,
@@ -583,7 +621,9 @@ mapper(User,
        parent,
        child,
        another_parent1,
-       another_parent2
+       another_parent2,
+       Employee, Programmer, Marketing,
+       Resource
        )
 
 
@@ -962,12 +1002,16 @@ if __name__ == '__main__':
             
             pa.save()
             
+            #from dbgp.client import brk; brk()
+            
             del pa
             pa = monga.col(parent).find_one(name='anvie-keren')
             
             self.assertEqual( pa.name, 'anvie-keren' )
             self.assertEqual( pa.childs[0].name, 'c1')
+            
             #from dbgp.client import brk; brk()
+            
             self.assertEqual( pa.childs[13].name, 'c14') # lazy load test memory cache
             self.assertEqual( pa.childs[12].name, 'c13') # lazy load test memory cache
             self.assertEqual( pa.childs[12].name, 'c13')
@@ -1216,6 +1260,58 @@ if __name__ == '__main__':
             self.assertEqual( anvie.gender, "pria" )
             
             
+        def test_inheritance(self):
+            """ngetest inheritance...
+            """
+            
+            monga._db.test.remove({})
+            
+            anvie = Employee(monga,
+                name = "anvie",
+                age = 23
+            )
+            didit = Programmer(monga,
+                name = "didit",
+                age = 23,
+                division = "engine"
+            )
+            exa = Programmer(monga,
+                name = "exa",
+                age = 27,
+                division = "ui"
+            )
+            tommy = Marketing(monga,
+                name = "tommy",
+                age = 31
+            )
+            mac = Resource(
+                name = "macbook pro",
+                price = 13000000
+            )
+            
+            didit.tools.append(mac)
+            
+            # from dbgp.client import brk; brk()
+            
+            anvie.save()
+            didit.save()
+            exa.save()
+            tommy.save()
+            
+            self.assertEqual(anvie.name,"anvie")
+            self.assertEqual(didit.name,'didit')
+            self.assertEqual(didit.sallary, 8000000)
+            
+            didit = self.monga.col(Programmer).find_one(name="didit")
+            
+            self.assertNotEqual(didit, None)
+            self.assertEqual(type(didit), Programmer)
+            self.assertEqual(didit.get_sallary(), 8000000)
+            
+            self.assertEqual( didit.tools.count(), 1 )
+            self.assertEqual( didit.tools[0].name, "macbook pro" )
+            self.assertEqual( didit.tools[0].owner.name, "didit" )
+            pass
             
             
             

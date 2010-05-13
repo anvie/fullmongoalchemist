@@ -165,7 +165,16 @@ class SuperDoc(Doc):
                 if not x.startswith('_x_'):
 
                     setattr(self.__class__, '_x_%s' % x, getattr(self.__class__, x) )
-                    delattr(self.__class__, x)
+                    
+                    try:
+                        delattr(self.__class__, x)
+                    except AttributeError:
+                        # kalo error coba deh hapus dari super-class-nya kalo ada tapi...
+                        for cl in self.__class__.__bases__:
+                            try:
+                                delattr(cl, x)
+                            except:
+                                pass
 
                 else:
 
@@ -204,7 +213,20 @@ class SuperDoc(Doc):
         
         if self._monga.config.get('nometaname') == False:
             # buat metaname untuk modelnya
+            
+            #if self.__class__.__bases__[0].__name__ == "SuperDoc":
             setattr( self.__dict__['_data'], '_metaname_', self.__class__.__name__ )
+            #else:
+            #    parents = []
+            #    parent = self.__class__.__bases__[0]
+            #    parents.append( self.__class__.__name__ )
+            #    while(True):
+            #        parents.append( parent.__name__ )
+            #        if parent.__bases__[0].__name__ == "SuperDoc":
+            #            break
+            #        parent = parent.__bases__[0]
+                    
+            #    setattr( self.__dict__['_data'], '_metaname_',  parents )
         
         # reset dulu error tracknya, buat jaga kalo2 dibutuhkan buat error checking
         self._monga._db.reset_error_history()

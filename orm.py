@@ -166,10 +166,30 @@ class relation(object):
             rv = self._cond.where( **dict(map( lambda x: (x, hasattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) and getattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) or None ), self._cond.raw.values() )))
         
         if rv and type(rv) == dict:
-
+            
             if self._parent_class._monga.config.get('nometaname') == False and self._type != 'many-to-one':
+                
                 # uses metaname
-                rv['_metaname_'] = self._rel_class_name
+                
+                def get_siblings():
+                    global mapped_user_class_docs
+                    
+                    rc = self._get_rel_class()
+                    siblings = [rc.__name__]
+                    
+                    for k,sb in mapped_user_class_docs.iteritems():
+                        parent = sb.__bases__[0]
+                        while(True):
+                            if parent.__name__ == "SuperDoc": break
+                            if parent.__name__ == rc.__name__:
+                                siblings.append( sb.__name__ )
+                                break
+                            parent = parent.__bases__[0]
+                            
+                    return siblings
+                
+                #from dbgp.client import brk; brk()
+                rv['_metaname_'] = {'$in' : get_siblings()}
             
         return rv
         
@@ -215,8 +235,7 @@ class relation(object):
                 cached_data += [ None for x in xrange(0,rv.count() - 10) ]
             
             self.__dict__['_cached_repr'] = cached_data
-            #self.__dict__['_data'] = rv.limit(-1).tofirst()
-            
+
             self.__dict__['_data'] = SuperDocList (
                 DocList( self._parent_class._monga,
                         rel_class,
@@ -309,7 +328,10 @@ class relation(object):
             if self._type == 'many-to-one':
                 self._rel_class_name = str(getattr(self._parent_class.__dict__['_data'], '__meta_pcname__'))
             
-            self.rel_class = type(self._rel_class_name) == str and mapped_user_class_docs[self._rel_class_name] or self._rel_class_name
+            try:
+                self.rel_class = type(self._rel_class_name) == str and mapped_user_class_docs[self._rel_class_name] or self._rel_class_name
+            except KeyError:
+                raise RelationError, "Resource class not mapped. try to mapper first."
         return self.rel_class
 
         
@@ -318,7 +340,9 @@ class relation(object):
 
 
     def _is_data_related(self, data):
-        return data.__class__.__name__ == self._rel_class_name
+        rv = data.__class__.__name__ == self._rel_class_name or \
+            self._rel_class_name in [ x.__name__ for x in data.__class__.__bases__ ] # periksa juga untuk super-class-nya
+        return rv
         
 
     def append(self, data):

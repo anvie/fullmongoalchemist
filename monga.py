@@ -32,6 +32,9 @@ class MongoDB(object):
         self.host = host
         self.port = port
         
+        self._cn = None
+        self._db = None
+        
         self._connected = self.connect()
         
         for x in ('nometaname','notypeknown'):
@@ -67,8 +70,11 @@ class MongoDB(object):
         
     def __del__(self):
         
-        del self._db
-        del self._cn
+        if self._db is not None:
+            del self._db
+            
+        if self._cn is not None:
+            del self._cn
         
     def col(self, doctype, echo=False):
         

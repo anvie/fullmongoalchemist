@@ -277,4 +277,10 @@ class Collection:
         return self._monga._db[self._doctype._collection_name].map_reduce(map_func, reduce_func)
         
         
+    def clear( self ):
+        '''nggo ngapus kabeh data record neng collection
+        '''
+        return self._monga._db[self._doctype._collection_name].remove({})
+        
+        
         
