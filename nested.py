@@ -1,3 +1,5 @@
+
+
 class Nested(object):
     """Nested represents a dumb object, that converts a given dict 
     to internal attributes. There are several ways to map a dict to
@@ -35,4 +37,14 @@ class Nested(object):
     
     def _hasattr(self, k):
         return k.startswith('__') == False and k in dir(self)
+        
+      
+    def __getstate__(self):
+        return self.to_dict(self)
+    
+    
+        
+    # def __to_dict(self)
+    # ===> implemented in doc.py
+        
     

@@ -154,23 +154,6 @@ class Message(SuperDoc):
         return self._deleted
 
     
-class ChatMessage(SuperDoc):
-    
-    _collection_name = 'test'
-    
-    chat_msg_id = long
-    from_user_id = long
-    to_user_id = long
-    message = unicode
-    received = bool
-    sent = datetime.datetime
-    
-    _opt = {
-        'req' : ['chatdata_id','message'],
-        'default' : {'sent':datetime.datetime.now},
-        'strict' : True
-    }
-    
 class UserNotification(SuperDoc):
     
     _collection_name = 'test'
@@ -564,6 +547,8 @@ class Employee(SuperDoc):
     
     name = unicode
     age = int
+    _position = unicode
+    _credential_id = unicode
     
     def get_sallary(self):
         return self.sallary
@@ -581,6 +566,15 @@ class Marketing(Employee):
     
     sallary = 5000000
     
+class CoProgrammer(Programmer):
+    
+    salarry = 5000000
+    _position = "Co Programmer"
+    
+    @property
+    def position(self):
+        return self._position
+    
 class Resource(SuperDoc):
     
     _collection_name = "test"
@@ -596,7 +590,6 @@ class Resource(SuperDoc):
 mapper(User,
        WallPost,
        Message,
-       ChatMessage,
        UserNotification,
        UserCart,
        UserActivity,
@@ -622,7 +615,7 @@ mapper(User,
        child,
        another_parent1,
        another_parent2,
-       Employee, Programmer, Marketing,
+       Employee, Programmer, CoProgrammer, Marketing,
        Resource
        )
 
@@ -1261,7 +1254,7 @@ if __name__ == '__main__':
             
             
         def test_inheritance(self):
-            """ngetest inheritance...
+            """Inheritance test
             """
             
             monga._db.test.remove({})
@@ -1311,8 +1304,15 @@ if __name__ == '__main__':
             self.assertEqual( didit.tools.count(), 1 )
             self.assertEqual( didit.tools[0].name, "macbook pro" )
             self.assertEqual( didit.tools[0].owner.name, "didit" )
-            pass
+        
+            misbah = CoProgrammer(monga,name="misbah")
+            misbah.save()
             
+            self.assertEqual(misbah.age,None)
+            self.assertEqual(misbah.division,None)
+            self.assertEqual(misbah.name,"misbah")
+            self.assertEqual(misbah.position,"Co Programmer")
+            self.assertEqual(misbah._credential_id,None)
             
             
             

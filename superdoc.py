@@ -157,6 +157,10 @@ class SuperDoc(Doc):
         # map class atribute based user definition to _data container collection
         _attrs = filter( lambda x: type(getattr(self.__class__,x)) in (types.TypeType, options) and x not in ['__class__'], dir(self.__class__) )
 
+        #if str(self.__class__.__name__) == 'FBUser':
+        #    from dbgp.client import brk; brk()
+        #    pass
+
         for x in _attrs:
 
             y = x
@@ -170,7 +174,7 @@ class SuperDoc(Doc):
                         delattr(self.__class__, x)
                     except AttributeError:
                         # kalo error coba deh hapus dari super-class-nya kalo ada tapi...
-                        for cl in self.__class__.__bases__:
+                        for cl in self.__class__.__mro__[1:]:
                             try:
                                 delattr(cl, x)
                             except:
@@ -214,19 +218,7 @@ class SuperDoc(Doc):
         if self._monga.config.get('nometaname') == False:
             # buat metaname untuk modelnya
             
-            #if self.__class__.__bases__[0].__name__ == "SuperDoc":
             setattr( self.__dict__['_data'], '_metaname_', self.__class__.__name__ )
-            #else:
-            #    parents = []
-            #    parent = self.__class__.__bases__[0]
-            #    parents.append( self.__class__.__name__ )
-            #    while(True):
-            #        parents.append( parent.__name__ )
-            #        if parent.__bases__[0].__name__ == "SuperDoc":
-            #            break
-            #        parent = parent.__bases__[0]
-                    
-            #    setattr( self.__dict__['_data'], '_metaname_',  parents )
         
         # reset dulu error tracknya, buat jaga kalo2 dibutuhkan buat error checking
         self._monga._db.reset_error_history()
@@ -471,6 +463,13 @@ class SuperDoc(Doc):
         
         return Doc.delete(self)
     
+    # support pickle protocol
+    def __getstate__(self):
+        return self.__dict__['_data']
+    
+    # support pickle protocol    
+    def __setstate__(self,d):
+        self.__dict__['_data'] = d
 
     def __repr__(self):
         

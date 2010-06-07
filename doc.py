@@ -6,7 +6,6 @@ from const import *
 
 import types
 
-
 # define global for optimization purpose (reduce overcall frequently)
 _pyver_lt_260 = map(int, python_version().split('.')) < [2, 6, 0]
 

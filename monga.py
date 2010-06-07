@@ -91,7 +91,7 @@ class MongoDB(object):
         
 
     
-def monga_from_config( config, prefix, mongaconf ):
+def monga_from_config( config, prefix, mongaconf={} ):
     '''Load monga instance from config preset.
     helper for Plylons. format = Pylons configuration file.
     '''
