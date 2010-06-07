@@ -157,8 +157,8 @@ class SuperDoc(Doc):
         # map class atribute based user definition to _data container collection
         _attrs = filter( lambda x: type(getattr(self.__class__,x)) in (types.TypeType, options) and x not in ['__class__'], dir(self.__class__) )
 
-        #if str(self.__class__.__name__) == 'FBUser':
-        #    from dbgp.client import brk; brk()
+        #from dbgp.client import brk; brk()
+        #if str(self.__class__.__name__) == 'User':
         #    pass
 
         for x in _attrs:
@@ -167,14 +167,20 @@ class SuperDoc(Doc):
             if type(getattr(self,x)) != relation:
                 
                 if not x.startswith('_x_'):
-
-                    setattr(self.__class__, '_x_%s' % x, getattr(self.__class__, x) )
+                    
+                    v = getattr(self.__class__, x)
+                    setattr(self.__class__, '_x_%s' % x, v )
                     
                     try:
                         delattr(self.__class__, x)
                     except AttributeError:
+                        #from dbgp.client import brk; brk()
                         # kalo error coba deh hapus dari super-class-nya kalo ada tapi...
-                        for cl in self.__class__.__mro__[1:]:
+                        for cl in self.__class__.__mro__[1:-3]:
+                            
+                            # pasang attribut di tiap class yang diturunkan
+                            setattr(cl, '_x_%s' % x, v)
+                            
                             try:
                                 delattr(cl, x)
                             except:
@@ -353,7 +359,22 @@ class SuperDoc(Doc):
         # kembalikan True apabila berupa meta name khusus
         if name in self.__dict__['_reserved_entry_name']: return True
         
-        return (hasattr(self.__class__, name) and type(getattr(self.__class__, name)) in [relation, types.TypeType, options]) or hasattr(self.__class__, '_x_%s' % name)
+        
+        #if self.__class__.__bases__[0] != SuperDoc:
+        #    from dbgp.client import brk; brk()
+        #    for cls in self.__class__.__mro__:
+        #        if cls == SuperDoc:
+        #            break
+        #        rv = (hasattr(cls, name) and \
+        #            type(getattr(cls, name)) in [relation, types.TypeType, options]) or \
+        #            hasattr(cls, '_x_%s' % name)
+        #        if rv:
+        #            return True
+        #    return False
+        
+        return (hasattr(self.__class__, name) and \
+                type(getattr(self.__class__, name)) in [relation, types.TypeType, options]) or \
+                hasattr(self.__class__, '_x_%s' % name)
         
         
     def __setattr__(self, k, v):

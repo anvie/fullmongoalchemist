@@ -244,11 +244,13 @@ class Collection:
         """
 
         if '_id' in kwargs:
-            _cond = ObjectId(str(kwargs['_id']))
-        else:
-            if self._monga.config.get('nometaname') == False:
-                kwargs['_metaname_'] = self._doctype.__name__
-            _cond = self._parse_query(kwargs)
+            kwargs['_id'] = ObjectId(str(kwargs['_id']))
+        
+        #else:
+        if self._monga.config.get('nometaname') == False:
+            kwargs['_metaname_'] = self._doctype.__name__
+            
+        _cond = self._parse_query(kwargs)
 
         docs = self._monga._db[self._doctype._collection_name].find_one( _cond )
 
