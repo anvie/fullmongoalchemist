@@ -10,7 +10,7 @@ from pymongo import ASCENDING, DESCENDING
 from const import allowed_data_types
 
 
-VERSION = '0.2'
+VERSION = '0.3'
 COPYRIGHT = 'AnLab Software'
 CONTACT = 'robin@nosql.asia'
 
