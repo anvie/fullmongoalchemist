@@ -243,10 +243,6 @@ class Collection:
         documents by unique key.
         """
 
-        if '_id' in kwargs:
-            kwargs['_id'] = ObjectId(str(kwargs['_id']))
-        
-        #else:
         if self._monga.config.get('nometaname') == False:
             kwargs['_metaname_'] = self._doctype.__name__
             
