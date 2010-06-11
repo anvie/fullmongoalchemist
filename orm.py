@@ -453,7 +453,9 @@ class relation(object):
                         # delete it after used
                         delattr( data.__dict__['_data'], rel )
                         
-
+                    if data._monga is None:
+                        data.set_monga(self._parent_class._monga)
+                        
                     data.save()
                     del self.__dict__['_new_data'][:]
                     
