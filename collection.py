@@ -155,7 +155,7 @@ class Collection:
         removed or updated after they have been selected.
         
         c = Collection('test')
-        c.query(name='jack').delete()
+        c.query(name='jack').remove()
         c.query(name='jack').update(set__name='john')
         """
         

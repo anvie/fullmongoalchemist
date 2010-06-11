@@ -313,6 +313,32 @@ class relation(object):
                     self._parent_class._monga._db[rel_class._collection_name].find( _cond ).sort('_id',ASCENDING)
                     )
             )
+        
+    def query(self, **kwargs):
+        '''Get objects for quick delete or update.
+        Example:
+            user.messages.query(_id__in = [1,2,3]).delete()
+        '''
+        
+        if self._type is 'one-to-one':
+            raise RelationError, "this function only for one-to-many and or many-to-many relation"
+        
+        if not self.__ready_db_read(): return None
+        
+        _cond = self.__get_where_clause()
+        
+        if not _cond: return None
+        
+        if len(kwargs) > 0:
+            _cond.update( parse_query( kwargs ) )
+        
+        if self._parent_class._echo == True:
+            print 'query: %s' % repr(_cond)
+        
+        rel_class = self._get_rel_class()
+        
+        return self._parent_class._monga.col(rel_class).query(**kwargs)
+        
     
     def all(self):
         '''Mendapatkan semua record pada relasi.

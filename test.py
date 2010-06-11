@@ -267,7 +267,7 @@ class Market(SuperDoc):
     product_items = relation('ProductItem',pk='owner_market_id==_id')
     abuser = relation('Abuser',pk='item_id==_id')
     visitors = relation('Visitor',pk='item_id==_id',cond=and_(item_class='Visitor'))
-    posts = relation('MarketPost',pk='market_id==_id',cond=and_(item_class='Post'))
+    posts = relation('MarketPost',pk='market_id==_id',type="one-to-many")
     testi = relation('Testimonial',pk='market_id==_id')
 
 
@@ -1314,6 +1314,42 @@ if __name__ == '__main__':
             self.assertEqual(misbah.position,"Co Programmer")
             self.assertEqual(misbah._credential_id,None)
             
+            
+        def test_query(self):
+            '''Test query for update and delete.
+            '''
+            monga._db.test.remove({})
+            
+            market = Market(monga,name = "arcane")
+            post = MarketPost(
+                title = "Kartu keren",
+                _content = "Content of Kartu keren"
+            )
+            post2 = MarketPost(
+                title = "Kartu keren 2",
+                _content = "Content of Kartu keren 2"
+            )
+            
+            market.posts.append(post)
+            market.posts.append(post2)
+            
+            market.save()
+            
+            market = monga.col(Market).find_one(name="arcane")
+            
+            self.assertNotEqual(market,None)
+            
+            #from dbgp.client import brk; brk()
+            
+            posts = market.posts.all()
+            
+            self.assertEqual(len(posts),2)
+            
+            post_ids = [str(x._id) for x in posts]
+            
+            market.posts.query(_id__in = post_ids).remove()
+            
+            self.assertEqual(market.posts.count(),0)
             
             
         
