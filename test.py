@@ -705,6 +705,8 @@ if __name__ == '__main__':
             
             
         def test_single_relation(self):
+            '''Single relation (one-to-one) test
+            '''
             
             monga._db.test.remove({})
             
@@ -716,6 +718,7 @@ if __name__ == '__main__':
             market = monga.col(Market).new(name='Market Keren')
             market.save()
             
+            #from dbgp.client import brk; brk()
             obin.market = market
             
             obin.save()
@@ -724,6 +727,8 @@ if __name__ == '__main__':
             self.assertEqual( market.owner.name, 'Obin MF' )
 
         def test_metaname(self):
+            '''Metaname test
+            '''
             
             monga.col(PostMany).query().remove()
             monga.col(Tags).query().remove()

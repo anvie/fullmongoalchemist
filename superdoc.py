@@ -323,7 +323,7 @@ class SuperDoc(Doc):
                         setattr( self, x, rel )
                     else:
                         setattr( self, x, None ) # null it
-    
+
     
     def __cmp__(self, other):
         if other is None:
@@ -338,6 +338,9 @@ class SuperDoc(Doc):
         
     
     def __getattr__(self, k):
+        
+        if k in ('_opt','__methods__', '_hasattr'):
+            return Doc.__getattr__(self, k)
             
         v = getattr(self.__dict__['_data'], k)
         
@@ -406,7 +409,13 @@ class SuperDoc(Doc):
             
         # check if one-to-one relation
         # just map it to pk==fk
-        if hasattr(self.__class__,k) and type( getattr(self.__class__,k) ) == relation and isinstance(v,SuperDoc):
+        if hasattr(self.__class__,k) and type( getattr(self.__class__,k) ) == relation and isinstance(v,(SuperDoc,relation)):
+            
+            if type(v) == relation:
+                Doc.__setattr__(self, k , v)
+                if v._type != 'one-to-one' or v._data is None:
+                    return
+            
             r = getattr(self.__class__, k)
             
             if r._pk[0] == '_id':
@@ -426,7 +435,7 @@ class SuperDoc(Doc):
             else:
                 # relasi terbalik berarti masukin ke pending ops ajah...
                 fkey = getattr( self.__dict__['_data'], r._pk[1] )
-                self._pending_ops.add_op( v, 'setattr', key=r._pk[0], value=fkey )
+                self._pending_ops.add_op( v, 'setattr', key=r._pk[0], value=ObjectId and str(fkey) or fkey )
                 self._pending_ops.add_op( v, 'save' )
                 
         else:

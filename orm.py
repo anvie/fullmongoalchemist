@@ -443,7 +443,7 @@ class relation(object):
                 
                 if self._type == 'one-to-many':
                     
-                    if not data._changed(): continue
+                    if not data._changed() and getattr(data,self._pk[0]) is not None: continue
                     
                     if hasattr( self._parent_class.__dict__['_data'], self._pk[1] ):
                         
@@ -512,7 +512,7 @@ class relation(object):
                     
                     # update child relation
                     data.__dict__['_data']._id = \
-                        self._parent_class._monga._db[self._parent_class._collection_name].save(data.to_dict())
+                        self._parent_class._monga._db[data._collection_name].save(data.to_dict())
                     
                 elif self._type == 'many-to-one':
                     
