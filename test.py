@@ -3,7 +3,7 @@
 from fma import MongoDB, SuperDoc, Collection
 from fma.orm import relation, mapper
 from fma.antypes import *
-
+from fma import connector
 import datetime
 
 datetime_type = datetime.datetime
@@ -37,7 +37,7 @@ class Tags(SuperDoc):
     
     
     def get_related_tags(self):
-        return Collection( self._monga, Tags ).find(isi__in=self.isi,_id__ne=self._id)
+        return Collection( connector.db_instance,Tags ).find(isi__in=self.isi,_id__ne=self._id)
         
     
 
@@ -623,8 +623,12 @@ mapper(User,
 if __name__ == '__main__':
     
     
-    monga = MongoDB('anvie','','','127.0.0.1',27017,dict(nometaname=False))
-    print 'connected:',monga.connected
+    #self.db = MongoDB('anvie','','','127.0.0.1',27017,dict(nometaname=False))
+    #print 'connected:',self.db.connected
+    
+    from fma import connect
+    global db_connection
+    db_connection = connect("test")
     
     ## using python remote debugger
     #from dbgp.client import brk; brk()
@@ -634,12 +638,16 @@ if __name__ == '__main__':
     class mongo_test(unittest.TestCase):
         
         def setUp(self):
-            self.monga = monga
-            monga._db.test.remove({})
+            from fma import connector
+            #from dbgp.client import brk; brk()
+            global db_connection
+            self.connected = db_connection
+            connector.db_instance._db.test.remove({})
+            self.db = connector.db_instance
             
         def test_chain_effects(self):
             
-            post = monga.col(PostMany).new(isi='root')
+            post = self.db.col(PostMany).new(isi='root')
             post.posts.append(PostMany(isi='sub1a'))
             post.posts.append(PostMany(isi='sub1b'))
             post.tags.append(Tags(isi=['mouse','cat']))
@@ -655,7 +663,7 @@ if __name__ == '__main__':
             
             del post
             
-            post = monga.col(PostMany).find_one(isi='root')
+            post = self.db.col(PostMany).find_one(isi='root')
             
             self.assertEqual(post.isi,'root')
             self.assertTrue( hasattr(post,'_id') )
@@ -678,7 +686,7 @@ if __name__ == '__main__':
             
         def test_user_wallpost_comment(self):
             
-            usercol = monga.col(User)
+            usercol = self.db.col(User)
             
             usercol.query(name='tester').remove()
             
@@ -708,14 +716,14 @@ if __name__ == '__main__':
             '''Single relation (one-to-one) test
             '''
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            usercol = monga.col(User)
+            usercol = self.db.col(User)
             
             obin = usercol.new(name='Obin MF')
             obin.save()
             
-            market = monga.col(Market).new(name='Market Keren')
+            market = self.db.col(Market).new(name='Market Keren')
             market.save()
             
             #from dbgp.client import brk; brk()
@@ -730,15 +738,15 @@ if __name__ == '__main__':
             '''Metaname test
             '''
             
-            monga.col(PostMany).query().remove()
-            monga.col(Tags).query().remove()
+            self.db.col(PostMany).query().remove()
+            self.db.col(Tags).query().remove()
             
-            self.assertEqual( monga.col(Tags).find().count() , 0 )
+            self.assertEqual( self.db.col(Tags).find().count() , 0 )
             
-            monga.col(User).query().remove()
+            self.db.col(User).query().remove()
             
-            user = monga.col(User).new(name='new_user')
-            post = monga.col(PostMany).new(isi='apakekdah')
+            user = self.db.col(User).new(name='new_user')
+            post = self.db.col(PostMany).new(isi='apakekdah')
             post.posts.append(PostMany(isi='apaya'))
             post.tags.append(Tags(isi=['tags ajah']))
             
@@ -748,8 +756,8 @@ if __name__ == '__main__':
             del user
             del post
             
-            user = monga.col(User).find_one(name='new_user')
-            post = monga.col(PostMany).find_one(isi='apakekdah')
+            user = self.db.col(User).find_one(name='new_user')
+            post = self.db.col(PostMany).find_one(isi='apakekdah')
             
             self.assertEqual( user.name, 'new_user' )
             self.assertEqual( post.isi, 'apakekdah' )
@@ -762,27 +770,27 @@ if __name__ == '__main__':
             self.assertEqual( post.__dict__['_data']._metaname_, 'PostMany' )
             self.assertEqual( post.tags[0].__dict__['_data']._metaname_, 'Tags' )
             
-            self.assertEqual( monga.col(Tags).find().count() , 1 )
+            self.assertEqual( self.db.col(Tags).find().count() , 1 )
             
             post.tags.append(Tags(isi=['tags ajah-2']))
             
             post.save()
             
-            self.assertEqual( monga.col(Tags).find().count() , 2 )
+            self.assertEqual( self.db.col(Tags).find().count() , 2 )
             
-            monga.col(User).query(user_id=55).remove()
+            self.db.col(User).query(user_id=55).remove()
             
-            monga.col(PostMany).query().remove()
+            self.db.col(PostMany).query().remove()
             
-            self.assertEqual( monga.col(Tags).count(), 2 )
+            self.assertEqual( self.db.col(Tags).count(), 2 )
             
-            monga.col(Tags).query(isi='tags ajah').remove()
+            self.db.col(Tags).query(isi='tags ajah').remove()
             
-            self.assertEqual( monga.col(Tags).count(), 1 )
+            self.assertEqual( self.db.col(Tags).count(), 1 )
             
-            monga.col(Tags).query(isi='tags ajah-2').remove()
+            self.db.col(Tags).query(isi='tags ajah-2').remove()
             
-            self.assertEqual( monga.col(Tags).count(), 0 )
+            self.assertEqual( self.db.col(Tags).count(), 0 )
             
             post.tags.append( Tags(isi=['123a']) )
             post.tags.append( Tags(isi=['123a']) )
@@ -792,27 +800,27 @@ if __name__ == '__main__':
             post.save()
             
             self.assertEqual( post.tags.count(), 4 )
-            self.assertEqual( monga.col(Tags).count(), 4 )
-            self.assertEqual( monga.col(Tags).count(isi='123a'), 2 )
-            self.assertEqual( monga.col(Tags).count(isi='123b'), 2 )
+            self.assertEqual( self.db.col(Tags).count(), 4 )
+            self.assertEqual( self.db.col(Tags).count(isi='123a'), 2 )
+            self.assertEqual( self.db.col(Tags).count(isi='123b'), 2 )
             
-            monga.col(Tags).query(isi='123a').remove()
+            self.db.col(Tags).query(isi='123a').remove()
             
-            self.assertEqual( monga.col(Tags).count(), 2 )
+            self.assertEqual( self.db.col(Tags).count(), 2 )
             
-            monga.col(Tags).query(isi='123b').remove()
+            self.db.col(Tags).query(isi='123b').remove()
             
-            self.assertEqual( monga.col(Tags).count(), 0 )
+            self.assertEqual( self.db.col(Tags).count(), 0 )
             
             
         def test_extended(self):
             
-            monga.col(Tags).query().remove()
+            self.db.col(Tags).query().remove()
             
-            tags1 = monga.col(Tags).new(isi=['cat','lazy','dog'])
-            tags2 = monga.col(Tags).new(isi=['animal','cat','pet'])
-            tags3 = monga.col(Tags).new(isi=['pet','health','cat'])
-            tags4 = monga.col(Tags).new(isi=['bird','animal'])
+            tags1 = self.db.col(Tags).new(isi=['cat','lazy','dog'])
+            tags2 = self.db.col(Tags).new(isi=['animal','cat','pet'])
+            tags3 = self.db.col(Tags).new(isi=['pet','health','cat'])
+            tags4 = self.db.col(Tags).new(isi=['bird','animal'])
             
             tags1.save()
             tags2.save()
@@ -824,12 +832,12 @@ if __name__ == '__main__':
             
         def test_flipflap_relation(self):
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            post1 = monga.col(PostFlip).new(isi='post-1')
-            post2 = monga.col(PostFlip).new(isi='post-2')
-            post3 = monga.col(PostFlip).new(isi='post-3')
-            post4 = monga.col(PostFlip).new(isi='post-4')
+            post1 = self.db.col(PostFlip).new(isi='post-1')
+            post2 = self.db.col(PostFlip).new(isi='post-2')
+            post3 = self.db.col(PostFlip).new(isi='post-3')
+            post4 = self.db.col(PostFlip).new(isi='post-4')
             
             cat = TagFlip(isi='cat')
             lazy = TagFlip(isi='lazy')
@@ -837,11 +845,11 @@ if __name__ == '__main__':
             animal = TagFlip(isi='animal')
             bird = TagFlip(isi='bird')
             
-            monga.col(TagFlip).insert(cat)
-            monga.col(TagFlip).insert(lazy)
-            monga.col(TagFlip).insert(dog)
-            monga.col(TagFlip).insert(animal)
-            monga.col(TagFlip).insert(bird)
+            self.db.col(TagFlip).insert(cat)
+            self.db.col(TagFlip).insert(lazy)
+            self.db.col(TagFlip).insert(dog)
+            self.db.col(TagFlip).insert(animal)
+            self.db.col(TagFlip).insert(bird)
             
             post1.tags.append(cat)
             post1.tags.append(lazy)
@@ -875,7 +883,7 @@ if __name__ == '__main__':
             
             post5 = PostFlip(isi='sky')
             
-            monga.col(PostFlip).insert(post5)
+            self.db.col(PostFlip).insert(post5)
             
             bird.posts.append(post5)
             bird.save()
@@ -900,10 +908,10 @@ if __name__ == '__main__':
             #
             # test relation many-to-many but uses model it self
             #
-            user = monga.col(User).new(name='ada-deh')
+            user = self.db.col(User).new(name='ada-deh')
             
-            exa = monga.col(User).new(name='exa-tester')
-            didit = monga.col(User).new(name='didit-tester')
+            exa = self.db.col(User).new(name='exa-tester')
+            didit = self.db.col(User).new(name='didit-tester')
             
             exa.save()
             didit.save()
@@ -956,9 +964,9 @@ if __name__ == '__main__':
         
         def test_data_type(self):
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            post = monga.col(PostMany).new(isi='test')
+            post = self.db.col(PostMany).new(isi='test')
             post.save()
             
             post.nomor = 5
@@ -970,16 +978,16 @@ if __name__ == '__main__':
             post.save()
             del post
             
-            post = monga.col(PostMany).find_one(isi='test')
+            post = self.db.col(PostMany).find_one(isi='test')
             
             self.assertEqual( post.nomor, 5 )
             
             
         def test_many_child(self):
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            pa = monga.col(parent).new(name='anvie-keren')
+            pa = self.db.col(parent).new(name='anvie-keren')
             
             pa.childs.append(child(name='c1'))
             pa.childs.append(child(name='c2'))
@@ -1003,7 +1011,7 @@ if __name__ == '__main__':
             #from dbgp.client import brk; brk()
             
             del pa
-            pa = monga.col(parent).find_one(name='anvie-keren')
+            pa = self.db.col(parent).find_one(name='anvie-keren')
             
             self.assertEqual( pa.name, 'anvie-keren' )
             self.assertEqual( pa.childs[0].name, 'c1')
@@ -1029,15 +1037,15 @@ if __name__ == '__main__':
             
         def test_list_dict(self):
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            u = monga.col(User).new(name='anvie-keren')
+            u = self.db.col(User).new(name='anvie-keren')
             u.settings.test = 'is'
             u.save()
             
             del u
             
-            u = monga.col(User).find_one(name='anvie-keren')
+            u = self.db.col(User).find_one(name='anvie-keren')
             
             self.assertEqual( u.name, 'anvie-keren' )
             self.assertEqual( u.settings.test, 'is')
@@ -1047,36 +1055,36 @@ if __name__ == '__main__':
             
             del u
             
-            u = monga.col(User).find_one(name='anvie-keren')
+            u = self.db.col(User).find_one(name='anvie-keren')
             
             self.assertEqual( u.settings.oi, 'yeah' )
             
         def test_default_value(self):
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            wp = WallPost(monga,message='test',via='jakarta')
+            wp = WallPost(message='test',via='jakarta')
             wp.save()
             
-            writer = User(monga, name='anvie')
+            writer = User(name='anvie')
             
-            comment = monga.col(Comment).new(message="hai test", item_id = wp._id, writer = writer)
+            comment = self.db.col(Comment).new(message="hai test", item_id = wp._id, writer = writer)
             comment.save()
             
             self.assertNotEqual( comment._creation_time , None )
             
         def test_none_type(self):
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            msg = Message(monga,subject='subject-test',content='content-test')
+            msg = Message(subject='subject-test',content='content-test')
             msg.save()
             
             self.assertEqual( msg.owner, None)
             
             del msg
             
-            msg = monga.col(Message).find_one( subject = 'subject-test' )
+            msg = self.db.col(Message).find_one( subject = 'subject-test' )
             
             self.assertEqual( msg.owner, None)
             
@@ -1088,19 +1096,19 @@ if __name__ == '__main__':
             
             del msg
             
-            msg = monga.col(Message).find_one( subject = 'subject-test' )
+            msg = self.db.col(Message).find_one( subject = 'subject-test' )
             
             self.assertEqual( msg.owner.name, 'test-user')
             
-            pitem_category = ProductItemCategory(monga, name='Elektronik', code=38, parent_code=0, active=True)
+            pitem_category = ProductItemCategory(name='Elektronik', code=38, parent_code=0, active=True)
             pitem_category.save()
             
-            prod = monga.col(ProductItem).new( name='test',description='test',category_code=38 )
+            prod = self.db.col(ProductItem).new( name='test',description='test',category_code=38 )
             prod.save()
             
             del prod
             
-            prod = monga.col(ProductItem).find_one(name='test')
+            prod = self.db.col(ProductItem).find_one(name='test')
             
             self.assertEqual( prod.category.name, 'Elektronik')
             
@@ -1112,7 +1120,7 @@ if __name__ == '__main__':
             
             # from dbgp.client import brk; brk()
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
             class Item(SuperDoc):
                 _collection_name = 'test'
@@ -1120,11 +1128,11 @@ if __name__ == '__main__':
                 name = unicode
                 tags = list
                 
-            monga.col(Item).insert(Item(name='obin',tags=['keren','cool','nerd']))
-            monga.col(Item).insert(Item(name='imam',tags=['keren','funny','brother']))
-            monga.col(Item).insert(Item(name='nafid',tags=['brother','funny','notbad']))
-            monga.col(Item).insert(Item(name='uton',tags=['smart','cool','notbad']))
-            monga.col(Item).insert(Item(name='alfen',tags=['fat','nocool','huge']))
+            self.db.col(Item).insert(Item(name='obin',tags=['keren','cool','nerd']))
+            self.db.col(Item).insert(Item(name='imam',tags=['keren','funny','brother']))
+            self.db.col(Item).insert(Item(name='nafid',tags=['brother','funny','notbad']))
+            self.db.col(Item).insert(Item(name='uton',tags=['smart','cool','notbad']))
+            self.db.col(Item).insert(Item(name='alfen',tags=['fat','nocool','huge']))
             
             map_ = '''function () {
               this.tags.forEach(function(z) {
@@ -1140,7 +1148,7 @@ if __name__ == '__main__':
               return total;
             }'''
 
-            rv = monga.col(Item).map_reduce( map_, reduce_ )
+            rv = self.db.col(Item).map_reduce( map_, reduce_ )
             
             true_result = [
                 {u'_id': u'brother', u'value': 2.0},
@@ -1160,20 +1168,17 @@ if __name__ == '__main__':
             for i, x in enumerate(cr):
                 self.assertEqual( x, true_result[i] )
                 
-            monga._db.drop_collection(rv.result)
+            self.db._db.drop_collection(rv.result)
             
 
         def test_cascade(self):
             
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            #from dbgp.client import brk; brk()
+            # from dbgp.client import brk; brk()
             
-            obin = parent(
-                monga,
-                name = 'obin'
-            )
+            obin = parent( name = 'obin' )
             
             obin.save()
             
@@ -1197,30 +1202,24 @@ if __name__ == '__main__':
             self.assertEqual(obin.childs[0].name,'anvie')
             self.assertEqual(obin.childs[1].name,'anvie2')
             
-            self.assertEqual(monga.col(child).find(name='anvie').count(),1)
+            self.assertEqual(self.db.col(child).find(name='anvie').count(),1)
             
             #from dbgp.client import brk; brk()
             
             obin.delete()
             
-            self.assertEqual(monga.col(child).find(name='anvie').count(),0)
-            self.assertEqual(monga.col(child).find(name='anvie2').count(),0)
+            self.assertEqual(self.db.col(child).find(name='anvie').count(),0)
+            self.assertEqual(self.db.col(child).find(name='anvie2').count(),0)
             
             
         def test_many_to_one(self):
             
-                monga._db.test.remove({})
+                self.db._db.test.remove({})
                 
                 
-                parent1 = another_parent1(
-                    monga,
-                    name = 'parent1'
-                )
+                parent1 = another_parent1(name = 'parent1')
                 
-                parent2 = another_parent2(
-                    monga,
-                    name = 'parent2'
-                )
+                parent2 = another_parent2(name = 'parent2')
                 
                 
                 anvie1 = child(name='anvie1')
@@ -1239,7 +1238,7 @@ if __name__ == '__main__':
                 
         def test_options_type(self):
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
             #from dbgp.client import brk; brk()
             
@@ -1251,7 +1250,7 @@ if __name__ == '__main__':
                 
             self.assertEqual( anvie, None )
             
-            anvie = child(monga,name="anvie", gender="pria")
+            anvie = child(name="anvie", gender="pria")
             
             anvie.save()
             
@@ -1262,23 +1261,23 @@ if __name__ == '__main__':
             """Inheritance test
             """
             
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            anvie = Employee(monga,
+            anvie = Employee(
                 name = "anvie",
                 age = 23
             )
-            didit = Programmer(monga,
+            didit = Programmer(
                 name = "didit",
                 age = 23,
                 division = "engine"
             )
-            exa = Programmer(monga,
+            exa = Programmer(
                 name = "exa",
                 age = 27,
                 division = "ui"
             )
-            tommy = Marketing(monga,
+            tommy = Marketing(
                 name = "tommy",
                 age = 31
             )
@@ -1300,7 +1299,7 @@ if __name__ == '__main__':
             self.assertEqual(didit.name,'didit')
             self.assertEqual(didit.sallary, 8000000)
             
-            didit = self.monga.col(Programmer).find_one(name="didit")
+            didit = self.db.col(Programmer).find_one(name="didit")
             
             self.assertNotEqual(didit, None)
             self.assertEqual(type(didit), Programmer)
@@ -1310,7 +1309,7 @@ if __name__ == '__main__':
             self.assertEqual( didit.tools[0].name, "macbook pro" )
             self.assertEqual( didit.tools[0].owner.name, "didit" )
         
-            misbah = CoProgrammer(monga,name="misbah")
+            misbah = CoProgrammer(self.db,name="misbah")
             misbah.save()
             
             self.assertEqual(misbah.age,None)
@@ -1323,9 +1322,9 @@ if __name__ == '__main__':
         def test_query(self):
             '''Test query for update and delete.
             '''
-            monga._db.test.remove({})
+            self.db._db.test.remove({})
             
-            market = Market(monga,name = "arcane")
+            market = Market(name = "arcane")
             post = MarketPost(
                 title = "Kartu keren",
                 _content = "Content of Kartu keren"
@@ -1340,7 +1339,7 @@ if __name__ == '__main__':
             
             market.save()
             
-            market = monga.col(Market).find_one(name="arcane")
+            market = self.db.col(Market).find_one(name="arcane")
             
             self.assertNotEqual(market,None)
             
@@ -1363,7 +1362,7 @@ if __name__ == '__main__':
         unittest.TextTestRunner(verbosity=2).run(suite)
         
         # clean up
-        #monga._db.test.remove({})
+        #self.db._db.test.remove({})
         
     main()
     #import cProfile

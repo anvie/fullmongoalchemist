@@ -8,6 +8,7 @@ from exc import *
 from orm import *
 from const import *
 from pendingop import PendingOperation
+import connector
 
 import types
 
@@ -18,7 +19,7 @@ class SuperDoc(Doc):
     
     def __init__(self, _monga_instance=None, **datas):
         
-        #build reserved entry name
+        # build reserved entry name
         self.__dict__['_reserved_entry_name'] = []
         
         rel_names = filter( lambda x: type( getattr(self.__class__, x) ) == relation, dir(self.__class__) )
@@ -31,6 +32,9 @@ class SuperDoc(Doc):
                 self.__dict__['_reserved_entry_name'].append(reln)
         
         self._pending_ops = PendingOperation(self)
+        
+        _monga_instance = _monga_instance or connector.db_instance
+        
         self._load( _monga_instance, **datas )
         self._echo = False
         
@@ -361,19 +365,6 @@ class SuperDoc(Doc):
         # periksa apakah meta name, terutama pada relation many-to-many
         # kembalikan True apabila berupa meta name khusus
         if name in self.__dict__['_reserved_entry_name']: return True
-        
-        
-        #if self.__class__.__bases__[0] != SuperDoc:
-        #    from dbgp.client import brk; brk()
-        #    for cls in self.__class__.__mro__:
-        #        if cls == SuperDoc:
-        #            break
-        #        rv = (hasattr(cls, name) and \
-        #            type(getattr(cls, name)) in [relation, types.TypeType, options]) or \
-        #            hasattr(cls, '_x_%s' % name)
-        #        if rv:
-        #            return True
-        #    return False
         
         return (hasattr(self.__class__, name) and \
                 type(getattr(self.__class__, name)) in [relation, types.TypeType, options]) or \

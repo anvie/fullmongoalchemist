@@ -97,4 +97,9 @@ def monga_from_config( config, prefix, mongaconf={} ):
     '''
     kwargs = dump_config( config, prefix)
     kwargs['config'] = mongaconf
-    return MongoDB( **kwargs )
+    
+    
+    from fma import connector
+    connector.connect( **kwargs )
+    return connector.db_instance
+

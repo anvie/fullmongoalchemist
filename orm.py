@@ -11,7 +11,7 @@ from pendingop import PendingOperation
 
 import random, copy
 
-
+global mapped_user_class_docs
 mapped_user_class_docs = {}
 MAX_RECURSION_DEEP = 10
 RELATION_RECURSION_DEEP = 0
@@ -357,7 +357,7 @@ class relation(object):
             try:
                 self.rel_class = type(self._rel_class_name) == str and mapped_user_class_docs[self._rel_class_name] or self._rel_class_name
             except KeyError:
-                raise RelationError, "Resource class not mapped. try to mapper first."
+                raise RelationError, "Resource class `%s` not mapped. try to mapper first." % self._rel_class_name
         return self.rel_class
 
         

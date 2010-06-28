@@ -8,13 +8,19 @@ from superdoc import SuperDoc
 from orm import mapper, relation, RelationDataType
 from pymongo import ASCENDING, DESCENDING
 from const import allowed_data_types
-
+from antypes import options
+from connector import connect
 
 VERSION = '0.3'
 COPYRIGHT = 'AnLab Software'
 CONTACT = 'robin@nosql.asia'
 
 
+__all__ = [
+    "DBRef", "Doc", "Collection", "MongoDB",
+    "SuperDoc", "relation", "RelationDataType",
+    "ASCENDING", "DESCENDING", "options", "connect"
+]
 
 
 def to_dict(self, obj):
