@@ -50,7 +50,7 @@ class MongoDB(object):
             self._cn = Connection(self.host,self.port)
             self._db = self._cn[self.db_name]
         except Exception, e:
-            print 'ERROR: ', e
+            print 'DB connect error for host `%s` on port `%d` ERROR: %s' % (self.host,self.port,e)
             self._last_error = e
             return False
         return True
