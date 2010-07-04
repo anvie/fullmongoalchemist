@@ -669,6 +669,59 @@ class relation(object):
         self._parent_class.__dict__['_modified_childs'].append(info)
         
 
+class this(object):
+    
+    def __init__(self,at):
+        self.at = at
+        
+    def __repr__(self):
+        return str(self.at)
+    
+
+class query(object):
+    
+    def __init__(self,rel_class_name,filter_={}):
+        self._rel_class_name = rel_class_name
+        self.rel_class = None
+        self.filter = filter_
+        self._parent_class = None
+        
+        
+    def _get_rel_class(self):
+        global mapped_user_class_docs
+        if self.rel_class == None:
+            try:
+                self.rel_class = type(self._rel_class_name) == str and mapped_user_class_docs[self._rel_class_name] or self._rel_class_name
+            except KeyError:
+                raise RelationError, "Resource class `%s` not mapped. try to mapper first." % self._rel_class_name
+        return self.rel_class
+        
+    def __getattr__(self,key):
+        
+        if key == "filter": return object.__getattr__(self,key)
+        
+        _cond = {}
+        
+        for k, v in self.filter.iteritems():
+            if type(v) == this:
+                at = getattr(self._parent_class,str(v))
+                if at != None:
+                    _cond[k] = type(at) == ObjectId and unicode(at) or at
+            else:
+                _cond[k] = v
+                
+        _cond = parse_query(_cond)
+        rel_class = self._get_rel_class()
+        
+        sdl = SuperDocList (
+            DocList(
+                self._parent_class._monga,
+                rel_class,
+                self._parent_class._monga._db[rel_class._collection_name].find( _cond )
+            )
+        )
+        return getattr(sdl,key)
+
 
 class RelationDataType(object):
     

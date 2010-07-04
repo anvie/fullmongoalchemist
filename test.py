@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from fma import MongoDB, SuperDoc, Collection
-from fma.orm import relation, mapper
+from fma.orm import relation, query, this, mapper
 from fma.antypes import *
 from fma import connector
 import datetime
@@ -511,6 +511,9 @@ class parent(SuperDoc):
     _collection_name = 'test'
 
     childs = relation('child',pk='parent_id==_id',type='one-to-many',cascade='delete')
+    childs_spec = query("child",dict(_teacher_ids = this("_id")))
+    childs_co = query("child",dict(gender="pria"))
+    childs_ce = query("child",dict(gender="wanita"))
 
 # untuk test many-to-one
 class another_parent1(SuperDoc):
@@ -533,6 +536,7 @@ class child(SuperDoc):
     parent_id = unicode
     another_parent_id = unicode
     gender = options("pria","wanita")
+    _teacher_ids = list
     
     parent = relation('child',pk='_id==parent_id',type='one-to-one')
     another_parent = relation(pk='another_parent_id',type='many-to-one')
@@ -1355,6 +1359,41 @@ if __name__ == '__main__':
             
             self.assertEqual(market.posts.count(),0)
             
+            
+        def test_query_relation(self):
+            '''Relation query mode.
+            '''
+            
+            self.db._db.test.remove({})
+            
+            #from dbgp.client import brk; brk()
+            
+            p = parent(
+                name = "robin"
+            )
+            p.childs.append(
+                child(name = "imam",gender="pria")
+            )
+            p.childs.append(
+                child(name = "yani",gender="wanita")
+            )
+            p.childs.append(child(name="anis",gender="wanita"))
+            
+            p.save()
+            
+            self.assertEqual(p.childs_co.count(), 1)
+            self.assertEqual(p.childs_ce.count(), 2)
+            
+            a = child(name="a",_teacher_ids=["ab8203faad","023984a5ee"]).save()
+            b = child(name="b",_teacher_ids=["ab8203faad",str(p._id)]).save()
+            
+            #from dbgp.client import brk; brk()
+            
+            self.assertEqual(p.childs_spec.count(),1)
+            
+            x = p.childs_spec.next()
+            
+            self.assertEqual(x,b)
             
         
     def main():

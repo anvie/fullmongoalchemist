@@ -71,12 +71,12 @@ class SuperDoc(Doc):
                             % (self.__class__.__name__,k)
 
         #@TODO: mungkin butuh optimasi?
-        for x in dir(self.__class__):
+        for x in filter( lambda y: y!="__class__", dir(self.__class__)):
             
             o = getattr( self.__class__, x )
             ot = type( o )
             
-            if ot == property or ot not in (relation, types.TypeType, dict):
+            if ot == property or ot not in (relation, query, types.TypeType, dict):
                 continue
             
             if getattr( self, x ) == None:
@@ -116,7 +116,18 @@ class SuperDoc(Doc):
                 if _t._type == 'many-to-many':
                     if not self._hasattr( _t._keyrel[0] ):
                         setattr( self, _t._keyrel[0], [] ) # reset m2m relation meta list
-                        
+            
+            elif ot == query:
+                
+                _t = getattr(self,x)
+                
+                if type(_t) == types.NoneType:
+                    continue
+                
+                _t._parent_class = self
+                
+                setattr(self,x,_t)
+            
             elif ot == types.TypeType:
                 
                 # khusus buat inisialisasi empty list, default is []
