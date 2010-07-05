@@ -32,8 +32,9 @@ def parse_query(kwargs):
             
         else:
             
-            if k == '_id' and v[0] != ":":
-                v = type(v) in (unicode,str) and ObjectId(str(v)) or v
+            if k == '_id':
+                if type(v) == ObjectId:
+                    v = ObjectId(str(v)) or v
             else:
                 v = type(v) is ObjectId and str(v) or v
             
