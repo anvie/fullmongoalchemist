@@ -57,18 +57,31 @@ class SuperDoc(Doc):
         
         
         if _has_opt:
-            if not self._saved() and self._opt.has_key('default'):
-                for k, v in self._opt['default'].iteritems():
-                    if hasattr(self, k):
-                        if getattr(self.__dict__['_data'], k) is None:
-                            if type( v ) in [types.FunctionType, types.BuiltinFunctionType]:
-                                setattr( self.__dict__['_data'], k, apply( v ) )
-                            else:
-                                setattr( self.__dict__['_data'], k, v )
-                    else:
-                        raise SuperDocError, \
-                            '`%s` has no entryname `%s` for default value assignment' \
-                            % (self.__class__.__name__,k)
+            
+            cls_bases = self.__class__.__bases__
+        
+            # invokes multiple inheritance _opt
+            
+            for i,cl in enumerate(cls_bases):
+                if i > 0 and not hasattr(cl, "_opt"):
+                    continue
+                if i > 0:
+                    _opt = getattr(cl,"_opt")
+                else:
+                    _opt = getattr(self,"_opt")
+                    
+                if not self._saved() and _opt.has_key('default'):
+                    for k, v in _opt['default'].iteritems():
+                        if hasattr(self, k):
+                            if getattr(self.__dict__['_data'], k) is None:
+                                if type( v ) in [types.FunctionType, types.BuiltinFunctionType]:
+                                    setattr( self.__dict__['_data'], k, apply( v ) )
+                                else:
+                                    setattr( self.__dict__['_data'], k, v )
+                        else:
+                            raise SuperDocError, \
+                                '`%s` has no entryname `%s` for default value assignment' \
+                                % (self.__class__.__name__,k)
 
         #@TODO: mungkin butuh optimasi?
         for x in filter( lambda y: y!="__class__", dir(self.__class__)):

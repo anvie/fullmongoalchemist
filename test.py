@@ -503,7 +503,7 @@ class Comment(SuperDoc):
     
     _opt = {
         'req' : ['item_id','writer_id','message','_creation_time'],
-        'default' : {'_creation_time':datetime.datetime.now}
+        'default' : {'_creation_time':datetime.datetime.utcnow}
     }
     
 
@@ -557,7 +557,21 @@ class Employee(SuperDoc):
     def get_sallary(self):
         return self.sallary
     
-class Programmer(Employee):
+class OutSourcer(SuperDoc):
+    
+    _active = bool
+    
+    _opt = {
+        "default" : {
+            "_active" : True
+        }
+    }
+    
+    def set_active(self,active):
+        self._active = active
+        
+    
+class Programmer(Employee, OutSourcer):
     
     sallary = 8000000
     
@@ -1072,7 +1086,9 @@ if __name__ == '__main__':
             
             writer = User(name='anvie')
             
+            #from dbgp.client import brk; brk()
             comment = self.db.col(Comment).new(message="hai test", item_id = wp._id, writer = writer)
+            
             comment.save()
             
             self.assertNotEqual( comment._creation_time , None )
@@ -1262,7 +1278,7 @@ if __name__ == '__main__':
             
             
         def test_inheritance(self):
-            """Inheritance test
+            """Inheritance
             """
             
             self.db._db.test.remove({})
@@ -1322,6 +1338,10 @@ if __name__ == '__main__':
             self.assertEqual(misbah.position,"Co Programmer")
             self.assertEqual(misbah._credential_id,None)
             
+            # test multiple inheritance
+        
+            self.assertEqual(exa._active,True)
+            
             
         def test_query(self):
             '''Test query for update and delete.
@@ -1361,7 +1381,7 @@ if __name__ == '__main__':
             
             
         def test_query_relation(self):
-            '''Relation query mode.
+            '''Relation query mode
             '''
             
             self.db._db.test.remove({})
@@ -1381,19 +1401,38 @@ if __name__ == '__main__':
             
             p.save()
             
+            #from dbgp.client import brk; brk()
+            
             self.assertEqual(p.childs_co.count(), 1)
             self.assertEqual(p.childs_ce.count(), 2)
             
             a = child(name="a",_teacher_ids=["ab8203faad","023984a5ee"]).save()
             b = child(name="b",_teacher_ids=["ab8203faad",str(p._id)]).save()
-            
-            #from dbgp.client import brk; brk()
+
             
             self.assertEqual(p.childs_spec.count(),1)
             
             x = p.childs_spec.next()
             
             self.assertEqual(x,b)
+            
+            child(name="c",_teacher_ids=["ab8203faad",str(p._id)]).save()
+            child(name="d",_teacher_ids=["ab8203faad",str(p._id)]).save()
+            child(name="e",_teacher_ids=["ab8203faad",str(p._id)]).save()
+            
+            
+            self.assertEqual(p.childs_spec.count(),4)
+            
+            child_names = ["b","c","d","e"]
+            
+            for i,son in enumerate(p.childs_spec):
+                self.assertEqual(son.name, child_names[i])
+                
+            males = p.childs_co()
+            females = p.childs_ce()
+            
+            self.assertEqual(males.count(), 1)
+            self.assertEqual(females.count(), 2)
             
         
     def main():

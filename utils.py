@@ -1,4 +1,5 @@
 
+from antypes import ObjectId
 import simplejson as json
 
 __bool_type = ('true','false','1','0')
@@ -21,12 +22,23 @@ def parse_query(kwargs):
         op = k.split('__')[-1]
         if op in ('lte', 'gte', 'lt', 'gt', 'ne',
             'in', 'nin', 'all', 'size', 'exists'):
-            v = {'$' + op: v}
+            
             k = k[:k.find('__' + op)]
-        
-        # XXX dunno if we really need this?
-        if type(v) == list:
-            v = str(v)
+            
+            if op == 'in':
+                v = {'$%s' % op: k == '_id' and map(lambda x: ObjectId(str(x)), v) or v }
+            else:
+                v = {'$%s' % op: k == '_id' and ObjectId(str(v)) or v }
+            
+        else:
+            
+            if k == '_id' and v[0] != ":":
+                v = type(v) in (unicode,str) and ObjectId(str(v)) or v
+            else:
+                v = type(v) is ObjectId and str(v) or v
+            
+        #v = k == '_id' and  type(v) in (unicode,str) and ObjectId(str(v)) or v
+        v = type(v) == list and str(v) or v
         
         # convert django style notation into dot notation
         key = k.replace('__', '.')

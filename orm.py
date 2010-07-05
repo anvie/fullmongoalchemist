@@ -695,11 +695,8 @@ class query(object):
             except KeyError:
                 raise RelationError, "Resource class `%s` not mapped. try to mapper first." % self._rel_class_name
         return self.rel_class
-        
-    def __getattr__(self,key):
-        
-        if key == "filter": return object.__getattr__(self,key)
-        
+    
+    def _get_cond(self):
         _cond = {}
         
         for k, v in self.filter.iteritems():
@@ -710,7 +707,46 @@ class query(object):
             else:
                 _cond[k] = v
                 
-        _cond = parse_query(_cond)
+        return parse_query(_cond)
+        
+    def __call__(self):
+
+        _cond = self._get_cond()
+        rel_class = self._get_rel_class()
+        
+        return SuperDocList (
+            DocList(
+                self._parent_class._monga,
+                rel_class,
+                self._parent_class._monga._db[rel_class._collection_name].find( _cond )
+            )
+        )
+        
+    def find(self,**cond):
+        _cond = self._get_cond()
+        _cond.update(cond)
+        
+        rel_class = self._get_rel_class()
+        return self._parent_class._monga.col(rel_class).find( **cond )
+        
+    def __iter__(self):
+        
+        _cond = self._get_cond()
+        rel_class = self._get_rel_class()
+        
+        return SuperDocList (
+            DocList(
+                self._parent_class._monga,
+                rel_class,
+                self._parent_class._monga._db[rel_class._collection_name].find( _cond )
+            )
+        ).__iter__()
+        
+    def __getattr__(self,key):
+        
+        if key in ("filter","find"): return object.__getattr__(self,key)
+        
+        _cond = self._get_cond()
         rel_class = self._get_rel_class()
         
         sdl = SuperDocList (
@@ -721,6 +757,9 @@ class query(object):
             )
         )
         return getattr(sdl,key)
+        
+    def __repr__(self):
+        return "<Dynamic Query Load [%s]>" % self._rel_class_name
 
 
 class RelationDataType(object):
