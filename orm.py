@@ -742,9 +742,14 @@ class query(object):
             )
         ).__iter__()
         
+        
+    def copy(self):
+        return query(self._rel_class_name, self.filter)
+        
     def __getattr__(self,key):
         
-        if key in ("filter","find"): return object.__getattr__(self,key)
+        if key in ("filter","find","copy"):
+            return object.__getattr__(self,key)
         
         _cond = self._get_cond()
         rel_class = self._get_rel_class()

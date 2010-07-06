@@ -137,6 +137,7 @@ class SuperDoc(Doc):
                 if type(_t) == types.NoneType:
                     continue
                 
+                _t = _t.copy()
                 _t._parent_class = self
                 
                 setattr(self,x,_t)
