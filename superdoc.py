@@ -117,7 +117,7 @@ class SuperDoc(Doc):
                         rv = self._monga._db[_t._get_rel_class()._collection_name].find({_t._pk[0]: rv}).count()
                         
                     if rv is None or rv == 0:
-                        setattr( self, x, None )
+                        setattr( self, x, RawType(None) )
                         setattr( self.__dict__['_data'], x, None )
                         continue
                 

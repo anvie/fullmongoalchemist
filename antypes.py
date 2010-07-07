@@ -7,8 +7,13 @@ from pymongo.binary import Binary
 __all__ = [
     'ObjectId', 'Binary', 'RelationError',
     'options', 'ConditionQuery', 'or_', 'and_',
-    'rawcond', 'dictarg'
+    'rawcond', 'dictarg', 'RawType'
 ]
+
+class RawType(object):
+    
+    def __init__(self, val):
+        self.val = val
 
 class ConditionQuery(object):
     

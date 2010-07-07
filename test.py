@@ -1097,6 +1097,8 @@ if __name__ == '__main__':
             
             self.db._db.test.remove({})
             
+            #from dbgp.client import brk; brk()
+            
             msg = Message(subject='subject-test',content='content-test')
             msg.save()
             

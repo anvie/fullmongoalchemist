@@ -1,9 +1,10 @@
 import datetime, time
 from antypes import Binary, options
+import types
 
 allowed_data_types = [list, dict, str, unicode, int, long, float,
                       time.struct_time, datetime.time, datetime.datetime, bool,
-                      Binary, options]
+                      Binary, options, types.NoneType]
 
 relation_reserved_words = ('_parent_class','listmode','_type',
                            '_keyrel','rel_class','_cond','_order','_pk',

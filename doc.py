@@ -3,6 +3,7 @@ from nested import Nested
 from platform import python_version
 from orm import relation, RelationDataType
 from const import *
+import antypes
 
 import types
 
@@ -62,6 +63,10 @@ class Doc(object):
             
             if obj_type in allowed_data_types:
                 setattr(self.__dict__['_data'], key, value)
+                
+            elif obj_type == antypes.RawType:
+                object.__setattr__(self, key, value.val)
+                
             else:    
                 object.__setattr__(self, key, value)
 
