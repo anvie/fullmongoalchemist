@@ -314,7 +314,7 @@ class SuperDoc(Doc):
         '''Reload data from database, for keep data up-to-date
         '''
         
-        if self._id is None:
+        if self._id == None:
             raise SuperDocError, "Cannot refresh data from db, may unsaved document?"
         
         doc = self._monga._db[self._collection_name].find_one(self._id)
@@ -357,8 +357,17 @@ class SuperDoc(Doc):
     def __cmp__(self, other):
         if other is None:
             return -1
-        if self.__dict__['_data']._id is None or other.__dict__['_data']._id is None:
+        
+        if self.__dict__['_data']._id is None:
             return -1
+        
+        # lazy load bug fix in iteration comparison
+        if other.__dict__["_data"] == None or other.__dict__["_data"]._id != None:
+            other.refresh()
+        
+        if other.__dict__['_data']._id is None:
+            return -1
+        
         return cmp( self._id, other._id)
 
 

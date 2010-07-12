@@ -24,18 +24,23 @@ class relation(object):
         
         
         self._internal_params = kwargs
-        
-        self.__dict__['_data'] = kwargs.get('listmode') and [] or None
             
         self._old_hash = -1
         self._current_hash = 0
         self._rel_class_name = rel_class
         
         self._type = kwargs.get('type')
+        self.listmode = kwargs.get('listmode')
         
+        if self.listmode or self._type == "one-to-many":
+            self.__dict__['_data'] = []
+        else:
+            self.__dict__['_data'] = None
+            
+        #self.__dict__['_data'] = (self.listmode or self._type == "one-to-many") and [] or None
         
         if self._type is None:
-            self.listmode = kwargs.get('listmode')
+            
             if self.listmode is None:
                 self._type = 'one-to-many'
                 self.listmode = True
@@ -121,7 +126,7 @@ class relation(object):
         
     @property
     def changed(self):
-        return self._current_hash != self._old_hash or len(self.__dict__['_new_data']) > 0 or len(self.__dict__['_deleted_item']) > 0
+        return self._current_hash != self._old_hash or len(self.__dict__['_new_data']) > 0 or len(self.__dict__['_deleted_item']) > 0 or self.__dict__["_data"] == None
 
     def _update_hash(self):
         self._current_hash = str(abs(hash(random.random())))
@@ -604,6 +609,10 @@ class relation(object):
                 raise RelationError, "No data with key %s" % k
         return self.__dict__['_data']
         
+    
+    def __iter__(self):
+        self.refresh()
+        return self.__dict__["_data"]
         
     def __len__(self):
         self.refresh()

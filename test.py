@@ -968,6 +968,7 @@ if __name__ == '__main__':
             user.refresh()
             
             self.assertTrue( didit not in user.friends )
+            #from dbgp.client import brk; brk()
             self.assertTrue( exa in user.friends )
             
             exa.delete()
