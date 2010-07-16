@@ -186,10 +186,6 @@ class SuperDoc(Doc):
         # map class atribute based user definition to _data container collection
         _attrs = filter( lambda x: type(getattr(self.__class__,x)) in (types.TypeType, options) and x not in ['__class__'], dir(self.__class__) )
 
-        #from dbgp.client import brk; brk()
-        #if str(self.__class__.__name__) == 'User':
-        #    pass
-
         for x in _attrs:
 
             y = x
@@ -203,12 +199,12 @@ class SuperDoc(Doc):
                     try:
                         delattr(self.__class__, x)
                     except AttributeError:
-                        #from dbgp.client import brk; brk()
                         # kalo error coba deh hapus dari super-class-nya kalo ada tapi...
                         for cl in self.__class__.__mro__[1:-3]:
                             
                             # pasang attribut di tiap class yang diturunkan
-                            setattr(cl, '_x_%s' % x, v)
+                            if hasattr(cl,x):
+                                setattr(cl, '_x_%s' % x, v)
                             
                             try:
                                 delattr(cl, x)
