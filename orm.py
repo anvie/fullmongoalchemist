@@ -231,7 +231,7 @@ class relation(object):
                 )
             
             # alokasikan null memory sebesar jumlah item pada db
-            if self._order is not None:
+            if self._order != None:
                 cached_data = rv.sort( **self._order ).limit(10).all() # maximum to 10...
             else:
                 cached_data = rv.sort(_id=1).limit(10).all() # maximum to 10...
@@ -247,6 +247,9 @@ class relation(object):
                         self._parent_class._monga._db[rel_class._collection_name].find( _cond )
                         )
                 )
+            
+            if self._order != None:
+                return self.__dict__['_data'].sort( **self._order )
             
             return self.__dict__['_data']
             
