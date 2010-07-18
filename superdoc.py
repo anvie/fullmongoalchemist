@@ -58,8 +58,10 @@ class SuperDoc(Doc):
         
         if _has_opt:
             
-            cls_bases = self.__class__.__bases__
+            cls_bases = self.__class__.__mro__[:-3]
         
+            # from dbgp.client import brk; brk()
+            
             # invokes multiple inheritance _opt
             
             for i,cl in enumerate(cls_bases):

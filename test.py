@@ -1079,6 +1079,7 @@ if __name__ == '__main__':
             self.assertEqual( u.settings.oi, 'yeah' )
             
         def test_default_value(self):
+            """Default and required value"""
             
             self.db._db.test.remove({})
             

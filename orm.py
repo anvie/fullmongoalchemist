@@ -692,10 +692,11 @@ class this(object):
 
 class query(object):
     
-    def __init__(self,rel_class_name,filter_={}):
+    def __init__(self,rel_class_name,filter_={},order={'_id':1}):
         self._rel_class_name = rel_class_name
         self.rel_class = None
         self.filter = filter_
+        self.order = order
         self._parent_class = None
         
         
@@ -732,14 +733,14 @@ class query(object):
                 rel_class,
                 self._parent_class._monga._db[rel_class._collection_name].find( _cond )
             )
-        )
+        ).sort(**self.order)
         
     def find(self,**cond):
         _cond = self._get_cond()
         _cond.update(cond)
         
         rel_class = self._get_rel_class()
-        return self._parent_class._monga.col(rel_class).find( **cond )
+        return self._parent_class._monga.col(rel_class).find( **cond ).sort(**self.order)
         
     def __iter__(self):
         
@@ -752,7 +753,7 @@ class query(object):
                 rel_class,
                 self._parent_class._monga._db[rel_class._collection_name].find( _cond )
             )
-        ).__iter__()
+        ).sort(**self.order).__iter__()
         
         
     def copy(self):
@@ -772,7 +773,7 @@ class query(object):
                 rel_class,
                 self._parent_class._monga._db[rel_class._collection_name].find( _cond )
             )
-        )
+        ).sort(**self.order)
         return getattr(sdl,key)
         
     def __repr__(self):
