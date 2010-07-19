@@ -168,7 +168,16 @@ class relation(object):
             rv = { self._keyrel[1] : {'$in' : d } }
 
         else:
-            rv = self._cond.where( **dict(map( lambda x: (x, hasattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) and getattr(self._parent_class.__dict__['_data'], x.startswith(':') and x[1:] or x) or None ), self._cond.raw.values() )))
+            
+            def mapper_(x):
+                if type(x[1]) not in (str, unicode):
+                    return x
+                return (x[1], hasattr(self._parent_class.__dict__['_data'],
+                                      x[1].startswith(':') and x[1][1:] or x[1])
+                        and getattr(self._parent_class.__dict__['_data'], x[1].startswith(':') and x[1][1:] or x[1]) or None )
+                
+            rv = self._cond.where( **dict(map( mapper_, self._cond.raw.iteritems() )))
+        
         
         if rv and type(rv) == dict:
             
