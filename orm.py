@@ -746,7 +746,7 @@ class query(object):
         
         _cond = self._get_cond()
         rel_class = self._get_rel_class()
-        
+
         return SuperDocList (
             DocList(
                 self._parent_class._monga,
@@ -757,7 +757,7 @@ class query(object):
         
         
     def copy(self):
-        return query(self._rel_class_name, self.filter)
+        return query(self._rel_class_name, self.filter, self.order)
         
     def __getattr__(self,key):
         
