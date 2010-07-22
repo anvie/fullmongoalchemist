@@ -78,11 +78,16 @@ class relation(object):
             
             self._pk = rv.split('==')
             
+            
             cond = kwargs.get('cond')
-            if cond:
-                self._cond = isinstance(cond, ConditionQuery) and cond or and_(cond)
+            if cond != None:
+                if type(cond) == and_:
+                    self._cond = and_(**{self._pk[0]:':%s' % self._pk[1]})
+                    self._cond.update(isinstance(cond, ConditionQuery) and cond.raw or and_(cond).raw)
+                else:
+                    self._cond = or_(**{self._pk[0]:':%s' % self._pk[1]})
+                    self._cond.update(isinstance(cond, ConditionQuery) and cond.raw or or_(cond).raw)
             else:
-                # use pk
                 self._cond = and_(**{self._pk[0]:':%s' % self._pk[1]})
                 
         elif self._type == 'many-to-one':

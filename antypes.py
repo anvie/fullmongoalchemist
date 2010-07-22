@@ -19,6 +19,9 @@ class ConditionQuery(object):
     
     def __init__(self,**conds):
         self._cond = conds
+        
+    def update(self,conds):
+        self._cond.update(conds)
 
     @property
     def raw(self):

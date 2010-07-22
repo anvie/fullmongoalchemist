@@ -714,7 +714,7 @@ if __name__ == '__main__':
             user = usercol.find_one(name='tester')
             
             self.assertTrue( user, None )
-            
+            #from dbgp.client import brk; brk()
             user.wallposts.append(WallPost(message='tester is test',via='unitest'))
             user.save()
             
