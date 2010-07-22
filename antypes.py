@@ -62,7 +62,7 @@ class ConditionQuery(object):
                                 if v == key:
                                     if k == '_id':
                                         return ObjectId(str(replacement))
-                                    dict_data[k] = type(replacement) == ObjectId and str(replacement) or replacement
+                                    dict_data[k] = type(replacement) == ObjectId and unicode(replacement) or replacement
                                     
                         return dict_data
                     
