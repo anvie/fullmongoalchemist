@@ -7,7 +7,7 @@ from pymongo.binary import Binary
 __all__ = [
     'ObjectId', 'Binary', 'RelationError',
     'options', 'ConditionQuery', 'or_', 'and_',
-    'rawcond', 'dictarg', 'RawType'
+    'rawcond', 'dictarg', 'RawType', 'variant'
 ]
 
 class RawType(object):
@@ -136,6 +136,10 @@ class options(list):
         list.__init__(self,args)
         self.value = None
 
+
+class variant(object):
+    pass
+    
     
 def dictarg(data):
     return dict(map(lambda x: (str(x[0]), x[1]), data.items()))

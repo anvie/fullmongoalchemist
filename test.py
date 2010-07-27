@@ -604,6 +604,12 @@ class Resource(SuperDoc):
     
     owner = relation("Programmer",pk="_id==user_id",type="one-to-one")
     
+    
+class VariantTest(SuperDoc):
+    _collection_name = "test"
+    
+    value = variant()
+    
 
 mapper(User,
        WallPost,
@@ -1437,6 +1443,16 @@ if __name__ == '__main__':
             
             self.assertEqual(males.count(), 1)
             self.assertEqual(females.count(), 2)
+            
+            
+        def test_variant(self):
+            """Variant type"""
+            
+            #from dbgp.client import brk; brk()
+            a = VariantTest(value = 5)
+            a.save()
+
+            self.assertEqual(a.value, 5)
             
         
     def main():

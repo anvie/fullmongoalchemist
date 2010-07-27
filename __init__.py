@@ -8,7 +8,7 @@ from superdoc import SuperDoc
 from orm import mapper, relation, RelationDataType, query, this
 from pymongo import ASCENDING, DESCENDING
 from const import allowed_data_types
-from antypes import options
+from antypes import options, variant
 from connector import connect
 
 VERSION = '0.3'
@@ -20,7 +20,7 @@ __all__ = [
     "DBRef", "Doc", "Collection", "MongoDB",
     "SuperDoc", "relation", "RelationDataType",
     "ASCENDING", "DESCENDING", "options", "connect",
-    "query","this"
+    "query", "this", "variant"
 ]
 
 

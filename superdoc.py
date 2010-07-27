@@ -86,12 +86,12 @@ class SuperDoc(Doc):
                                 % (self.__class__.__name__,k)
 
         #@TODO: mungkin butuh optimasi?
-        for x in filter( lambda y: y!="__class__", dir(self.__class__)):
+        for x in filter( lambda y: y.startswith('__') == False, dir(self.__class__)):
             
             o = getattr( self.__class__, x )
             ot = type( o )
             
-            if ot == property or ot not in (relation, query, types.TypeType, dict):
+            if ot == property or ot not in (relation, query, variant, types.TypeType, dict):
                 continue
             
             if getattr( self, x ) == None:
@@ -144,6 +144,11 @@ class SuperDoc(Doc):
                 
                 setattr(self,x,_t)
             
+            elif ot == variant:
+                
+                sx = x.startswith('_x_') and x[3:] or x
+                setattr( self, x, datas[sx] )
+            
             elif ot == types.TypeType:
                 
                 # khusus buat inisialisasi empty list, default is []
@@ -156,6 +161,7 @@ class SuperDoc(Doc):
                     
                 elif o == dict and sot != Nested:
                     setattr( self.__dict__['_data'], sx, Nested() )
+                    
 
         self.__dict__['_modified_childs'] = []
         
@@ -168,6 +174,7 @@ class SuperDoc(Doc):
                 ov = getattr(self.__class__, k)
             except:
                 ov = None
+                
             if ov and type(ov) is options:
                 if v not in ov:
                     raise SuperDocError, "`%s` cannot assign entryname for `%s = %s` invalid options, can only: `%s`" % (
@@ -186,7 +193,7 @@ class SuperDoc(Doc):
     def __sanitize(self):
         
         # map class atribute based user definition to _data container collection
-        _attrs = filter( lambda x: type(getattr(self.__class__,x)) in (types.TypeType, options) and x not in ['__class__'], dir(self.__class__) )
+        _attrs = filter( lambda x: type(getattr(self.__class__,x)) in (types.TypeType, options, variant) and x not in ['__class__'], dir(self.__class__) )
 
         for x in _attrs:
 
@@ -418,17 +425,19 @@ class SuperDoc(Doc):
         
         if hasattr( self.__class__, '_x_%s' % k ):
             typedata = getattr( self.__class__, '_x_%s' % k )
-            #v = type(v)==str and unicode(v) or v
-            if typedata != type(v) and type(v) is not types.NoneType:
+            vt = type(v)
+            if typedata != vt and vt is not types.NoneType:
                 
                 if typedata is bool and v not in (1,0):
                     raise SuperDocError, "mismatch data type `%s`=%s and `%s`=%s" % (k,typedata,v,type(v))
-                    
-                # try to convert it if possible
-                try:
-                    v = typedata(v)
-                except:
-                    raise SuperDocError, "mismatch data type `%s`=%s and `%s`=%s" % (k,typedata,v,type(v))
+                
+                if type(typedata) != variant:
+                    # try to convert it if possible
+                    try:
+                        v = typedata(v)
+                    except:
+                        raise SuperDocError, "mismatch data type `%s`=%s and `%s`=%s" % (k,typedata,v,type(v))
+                        
             
         # check if one-to-one relation
         # just map it to pk==fk

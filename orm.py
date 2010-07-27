@@ -359,7 +359,7 @@ class relation(object):
         
         rel_class = self._get_rel_class()
         
-        return self._parent_class._monga.col(rel_class).query(**kwargs)
+        return self._parent_class._monga.col(rel_class).query(**_cond)
         
     
     def all(self):
@@ -709,7 +709,7 @@ class query(object):
     def __init__(self,rel_class_name,filter_={},order={'_id':1}):
         self._rel_class_name = rel_class_name
         self.rel_class = None
-        self.filter = filter_
+        self._filter = filter_
         self.order = order
         self._parent_class = None
         
@@ -723,10 +723,11 @@ class query(object):
                 raise RelationError, "Resource class `%s` not mapped. try to mapper first." % self._rel_class_name
         return self.rel_class
     
+    
     def _get_cond(self):
         _cond = {}
         
-        for k, v in self.filter.iteritems():
+        for k, v in self._filter.iteritems():
             if type(v) == this:
                 at = getattr(self._parent_class,str(v))
                 if at != None:
@@ -771,7 +772,7 @@ class query(object):
         
         
     def copy(self):
-        return query(self._rel_class_name, self.filter, self.order)
+        return query(self._rel_class_name, self._filter, self.order)
         
     def __getattr__(self,key):
         
