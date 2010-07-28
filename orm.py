@@ -658,6 +658,11 @@ class relation(object):
             if other is None: return -1
             return cmp(self._id,other._id)
         return -1
+    
+    def __hash__(self):
+        if self._type == 'one-to-one':
+            return hash(unicode(self._id))
+        return object.__hash__(self)
         
     def __setattr__(self, key, value):
         

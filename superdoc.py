@@ -374,6 +374,10 @@ class SuperDoc(Doc):
             return -1
         
         return cmp( self._id, other._id)
+        
+    
+    def __hash__(self):
+        return hash(unicode(self.__dict__['_data']._id))
 
 
     def __getitem__(self, k):
