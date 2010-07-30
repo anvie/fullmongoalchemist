@@ -379,7 +379,6 @@ class SuperDoc(Doc):
     def __hash__(self):
         return hash(unicode(self.__dict__['_data']._id))
 
-
     def __getitem__(self, k):
         return getattr(self.__dict__['_data'], k)
         

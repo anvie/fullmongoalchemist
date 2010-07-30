@@ -609,7 +609,14 @@ class VariantTest(SuperDoc):
     _collection_name = "test"
     
     value = variant()
+
+
+
+class Item(SuperDoc):
+    _collection_name = 'test'
     
+    name = unicode
+    tags = list
 
 mapper(User,
        WallPost,
@@ -640,7 +647,8 @@ mapper(User,
        another_parent1,
        another_parent2,
        Employee, Programmer, CoProgrammer, Marketing,
-       Resource
+       Resource,
+       Item
        )
 
 
@@ -1151,12 +1159,6 @@ if __name__ == '__main__':
             # from dbgp.client import brk; brk()
             
             self.db._db.test.remove({})
-            
-            class Item(SuperDoc):
-                _collection_name = 'test'
-                
-                name = unicode
-                tags = list
                 
             self.db.col(Item).insert(Item(name='obin',tags=['keren','cool','nerd']))
             self.db.col(Item).insert(Item(name='imam',tags=['keren','funny','brother']))

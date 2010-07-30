@@ -177,6 +177,8 @@ class relation(object):
             def mapper_(x):
                 if type(x[1]) not in (str, unicode):
                     return x
+                if not x[1].startswith(':'):
+                    return x
                 return (x[1], hasattr(self._parent_class.__dict__['_data'],
                                       x[1].startswith(':') and x[1][1:] or x[1])
                         and getattr(self._parent_class.__dict__['_data'], x[1].startswith(':') and x[1][1:] or x[1]) or None )
@@ -208,7 +210,8 @@ class relation(object):
                     return siblings
                 
                 #from dbgp.client import brk; brk()
-                rv['_metaname_'] = {'$in' : get_siblings()}
+                if not rv.has_key('_metaname_'):
+                    rv['_metaname_'] = {'$in' : get_siblings()}
             
         return rv
         
@@ -730,6 +733,7 @@ class query(object):
     
     
     def _get_cond(self):
+        
         _cond = {}
         
         for k, v in self._filter.iteritems():
@@ -739,6 +743,9 @@ class query(object):
                     _cond[k] = type(at) == ObjectId and unicode(at) or at
             else:
                 _cond[k] = v
+        
+        if self._parent_class._monga.config.get('nometaname') == False:
+            _cond["_metaname_"] = self._rel_class_name
                 
         return parse_query(_cond)
         
