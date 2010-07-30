@@ -1,4 +1,5 @@
 from antypes import dictarg
+from reg import mapped_user_class_docs
 
 class DocList:
     """Represents a list of documents that are iteratable. 
@@ -70,27 +71,28 @@ class DocList:
 class SuperDocList(object):
     
     
-    def __init__(self, doclist):
+    def __init__(self, doclist, polymorphic=False):
         
         self._doclist = doclist
+        self._polymorphic = polymorphic
         
     def skip(self, num):
-        return SuperDocList( self._doclist.skip(num) )
+        return SuperDocList( self._doclist.skip(num), self._polymorphic )
     
     def limit(self, num):
-        return SuperDocList( self._doclist.limit(num) )
+        return SuperDocList( self._doclist.limit(num), self._polymorphic )
         
     def sort(self, **kwargs):
-        return SuperDocList( self._doclist.sort(**kwargs) )
+        return SuperDocList( self._doclist.sort(**kwargs), self._polymorphic )
         
     def tofirst(self):
-        return SuperDocList( self._doclist.rewind() )
+        return SuperDocList( self._doclist.rewind(), self._polymorphic )
         
     def count( self ):
         return self._doclist.count()
         
     def all(self):
-        return [ x for x in self._doclist ]
+        return [ x for x in self ]
         
     def first( self ):
         if self.count()>0:
@@ -102,7 +104,12 @@ class SuperDocList(object):
         return self
         
     def next(self):
-        return self._doclist.next()
+        rv = self._doclist._items.next()
+        if rv and self._polymorphic:
+            relc = mapped_user_class_docs[rv['_metaname_']]
+            return relc( self._doclist._monga, **dictarg(rv) )
+        return self._doclist._doctype( self._doclist._monga,  **dictarg(rv) )
         
     def copy(self):
         return copy.copy( self )
+

@@ -617,6 +617,27 @@ class Item(SuperDoc):
     
     name = unicode
     tags = list
+    
+    
+class PolyParent(SuperDoc):
+    _collection_name = 'test'
+    
+    
+    polies = relation("Poly",pk="_parent_id==_id",poly=True)
+    
+    
+class Poly(SuperDoc):
+    _collection_name = 'test'
+    
+    _parent_id = unicode
+    name = unicode
+
+class PolyChild1(Poly):
+    pass
+
+class PolyChild2(Poly):
+    pass
+    
 
 mapper(User,
        WallPost,
@@ -636,19 +657,11 @@ mapper(User,
        ProductItemCategory,       
        ProductItemSubscription,
        Currency,
-       BadBidder,
-       Comment,
-       PostMany,
-       Tags,
-       PostFlip,
-       TagFlip,
-       parent,
-       child,
-       another_parent1,
-       another_parent2,
-       Employee, Programmer, CoProgrammer, Marketing,
-       Resource,
-       Item
+       BadBidder, Comment, PostMany, Tags,
+       PostFlip, TagFlip, parent, child,
+       another_parent1, another_parent2,
+       Employee, Programmer, CoProgrammer, Marketing, Resource,
+       Item, PolyParent, Poly, PolyChild1, PolyChild2
        )
 
 
@@ -1455,6 +1468,23 @@ if __name__ == '__main__':
             a.save()
 
             self.assertEqual(a.value, 5)
+            
+            
+        def test_xx_polymorphic(self):
+            """Polymorphic test"""
+            
+            #from dbgp.client import brk; brk()
+            a = PolyParent()
+            a.save()
+            
+            a.polies.append(PolyChild1(name="p1"))
+            a.polies.append(PolyChild2(name="p2"))
+            a.save()
+            
+            self.assertEqual(a.polies[0].__class__.__name__,"PolyChild1")
+            self.assertEqual(a.polies[1].__class__.__name__,"PolyChild2")
+            self.assertEqual(a.polies[0].name,"p1")
+            self.assertEqual(a.polies[1].name,"p2")
             
         
     def main():

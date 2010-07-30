@@ -17,6 +17,7 @@ class SuperDoc(Doc):
     '''Advanced document for mongo ORM data model
     '''
     
+    
     def __init__(self, _monga_instance=None, **datas):
         
         # build reserved entry name
@@ -33,7 +34,13 @@ class SuperDoc(Doc):
         
         self._pending_ops = PendingOperation(self)
         
-        _monga_instance = _monga_instance or connector.db_instance
+        if _monga_instance:
+            if isinstance(_monga_instance, SuperDoc):
+                pass
+            else:
+                _monga_instance = _monga_instance
+        else:
+            _monga_instance = connector.db_instance
         
         self._load( _monga_instance, **datas )
         self._echo = False

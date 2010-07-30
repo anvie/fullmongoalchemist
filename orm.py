@@ -8,11 +8,10 @@ from pymongo.objectid import ObjectId
 from const import relation_reserved_words
 from utils import parse_query
 from pendingop import PendingOperation
-
+from reg import mapped_user_class_docs
 import random, copy
 
-global mapped_user_class_docs
-mapped_user_class_docs = {}
+
 MAX_RECURSION_DEEP = 10
 RELATION_RECURSION_DEEP = 0
 
@@ -31,6 +30,7 @@ class relation(object):
         
         self._type = kwargs.get('type')
         self.listmode = kwargs.get('listmode')
+        self._polymorphic = kwargs.get('poly', False)
         
         if self.listmode or self._type == "one-to-many":
             self.__dict__['_data'] = []
@@ -241,10 +241,12 @@ class relation(object):
         if self.listmode:
             
             rv = SuperDocList (
-                DocList( self._parent_class._monga,
+                DocList(
+                        self._parent_class._monga,
                         rel_class,
                         self._parent_class._monga._db[rel_class._collection_name].find( _cond )
-                        )
+                    ),
+                self._polymorphic
                 )
             
             # alokasikan null memory sebesar jumlah item pada db
@@ -259,10 +261,12 @@ class relation(object):
             self.__dict__['_cached_repr'] = cached_data
 
             self.__dict__['_data'] = SuperDocList (
-                DocList( self._parent_class._monga,
+                DocList(
+                        self._parent_class._monga,
                         rel_class,
                         self._parent_class._monga._db[rel_class._collection_name].find( _cond )
-                        )
+                    ),
+                    self._polymorphic
                 )
             
             if self._order != None:
