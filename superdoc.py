@@ -460,25 +460,32 @@ class SuperDoc(Doc):
             
             r = getattr(self.__class__, k)
             
-            if r._pk[0] == '_id':
-                if not hasattr(v,'_id') or v._id == None:
-                    if self._monga is None:
-                        raise RelationError, "cannot auto-save one-to-one relation in smart object assignment. is object not binded with monga instance?"
-                    # may unsaved doc, save it first
-                    v.set_monga(self._monga)
-                    v.save()
+            if r._type == "one-to-one":
+                
+                if r._pk[0] == '_id':
+                    if not hasattr(v,'_id') or v._id == None:
+                        if self._monga is None:
+                            raise RelationError, "cannot auto-save one-to-one relation in smart object assignment. is object not binded with monga instance?"
+                        # may unsaved doc, save it first
+                        v.set_monga(self._monga)
+                        v.save()
+
+                elif not v._hasattr(r._pk[0]):
+                    raise RelationError, "relation model `%s` don't have keyname `%s`" % (v.__class__.__name__, r._pk[0])
+                        
                     
-            elif not v._hasattr(r._pk[0]):
-                raise RelationError, "relation model `%s` don't have keyname `%s`" % (v.__class__.__name__, r._pk[0])
-            
-            fkey = getattr( v, r._pk[0] )
-            if fkey is not None:
-                setattr( self.__dict__['_data'], r._pk[1], type(fkey) == ObjectId and str(fkey) or fkey )
-            else:
-                # relasi terbalik berarti masukin ke pending ops ajah...
-                fkey = getattr( self.__dict__['_data'], r._pk[1] )
-                self._pending_ops.add_op( v, 'setattr', key=r._pk[0], value=ObjectId and str(fkey) or fkey )
-                self._pending_ops.add_op( v, 'save' )
+                fkey = getattr( v, r._pk[0] )
+                if fkey is not None:
+                    setattr( self.__dict__['_data'], r._pk[1], type(fkey) == ObjectId and str(fkey) or fkey )
+                else:
+                    # relasi terbalik berarti masukin ke pending ops ajah...
+                    fkey = getattr( self.__dict__['_data'], r._pk[1] )
+                    self._pending_ops.add_op( v, 'setattr', key=r._pk[0], value=ObjectId and str(fkey) or fkey )
+                    self._pending_ops.add_op( v, 'save' )
+                    
+            elif r._type == "many-to-one":
+                setattr( self.__dict__['_data'], '__meta_pcname__', v.__class__.__name__ )
+                setattr( self.__dict__['_data'], r._pk, unicode(v._id) )
                 
         else:
             Doc.__setattr__(self, k , v)
