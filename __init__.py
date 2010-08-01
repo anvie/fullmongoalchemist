@@ -11,7 +11,7 @@ from const import allowed_data_types
 from antypes import options, variant
 from connector import connect
 
-VERSION = '0.3'
+VERSION = '0.4'
 COPYRIGHT = 'AnLab Software'
 CONTACT = 'robin@nosql.asia'
 
