@@ -310,6 +310,10 @@ class relation(object):
         rel_class = self._get_rel_class()
         
         rv = self._parent_class._monga._db[rel_class._collection_name].find_one( _cond )
+        
+        if self._polymorphic == True:
+            rel_class = mapped_user_class_docs[rv['_metaname_']]
+        
         return rv and rel_class( self._parent_class._monga, **dictarg(rv) ) or None
         
         
@@ -340,8 +344,10 @@ class relation(object):
             DocList( self._parent_class._monga,
                     rel_class,
                     self._parent_class._monga._db[rel_class._collection_name].find( _cond ).sort('_id',ASCENDING)
-                    )
+                    ),
+                self._polymorphic
             )
+        
         
     def query(self, **kwargs):
         '''Get objects for quick delete or update.
