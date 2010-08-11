@@ -778,7 +778,7 @@ class query(object):
         _cond.update(cond)
         
         rel_class = self._get_rel_class()
-        return self._parent_class._monga.col(rel_class).find_one( **cond ).sort(**self.order)
+        return self._parent_class._monga.col(rel_class).find_one( **cond )
         
         
     def filter(self,**cond):
