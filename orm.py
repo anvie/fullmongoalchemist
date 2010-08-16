@@ -569,6 +569,8 @@ class relation(object):
             
             #self._post_save.apply_op_all()
             
+            self.reload() # make sure is updated from db
+            
             if self.__dict__['_data']:
                 self.__dict__['_data'].save()
         
@@ -786,7 +788,7 @@ class query(object):
         _cond.update(cond)
         
         rel_class = self._get_rel_class()
-        return self._parent_class._monga.col(rel_class).find( **cond ).sort(**self.order)
+        return self._parent_class._monga.col(rel_class).find( **_cond ).sort(**self.order)
         
     def __iter__(self):
         
