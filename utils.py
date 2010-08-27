@@ -44,6 +44,12 @@ def parse_query(kwargs):
         # convert django style notation into dot notation
         key = k.replace('__', '.')
         
+        if key.startswith('.'):
+            key = "__%s" % key[1:]
+            
+        if key.endswith('.'):
+            key = "%s__" % key[:-1]
+        
         # convert mongodbobject SuperDoc type to pymongo DBRef type.
         # it's necessary for pymongo search working correctly
         #if type(v) == SuperDoc:

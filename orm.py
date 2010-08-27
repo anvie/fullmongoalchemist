@@ -340,13 +340,18 @@ class relation(object):
         
         rel_class = self._get_rel_class()
         
-        return SuperDocList (
+        rv = SuperDocList (
             DocList( self._parent_class._monga,
                     rel_class,
-                    self._parent_class._monga._db[rel_class._collection_name].find( _cond ).sort('_id',ASCENDING)
+                    self._parent_class._monga._db[rel_class._collection_name].find( _cond )
                     ),
                 self._polymorphic
             )
+        
+        if self._order != None:
+            rv = rv.sort( **self._order )
+        
+        return rv
         
         
     def query(self, **kwargs):
